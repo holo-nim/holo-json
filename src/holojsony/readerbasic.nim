@@ -1,4 +1,4 @@
-import ./[common, readerdef], private/objvar, hemodyne/syncvein, std/[strutils, unicode, parseutils, typetraits]
+import ./[common, readerdef], private/[objvar, fields, caseutils], hemodyne/syncvein, std/[strutils, unicode, parseutils, typetraits, macros]
 import std/json #from std/json import JsonNodeKind, JsonNode
 export JsonReader, JsonReaderOptions, initJsonReader, startRead
 
@@ -507,23 +507,46 @@ proc skipValue*(reader: var JsonReader): int =
     result = reader.bufferPos + 1
     discard parseSymbol(reader)
 
-proc snakeCaseDynamic(s: string): string =
-  if s.len == 0:
-    return
-  var prevCap = false
-  for i, c in s:
-    if c in {'A'..'Z'}:
-      if result.len > 0 and result[result.len-1] != '_' and not prevCap:
-        result.add '_'
-      prevCap = true
-      result.add c.toLowerAscii()
-    else:
-      prevCap = false
-      result.add c
-
 template snakeCase(s: string): string =
   const k = snakeCaseDynamic(s)
   k
+
+proc crudeReplaceIdent(n: NimNode, name: string, val: NimNode): NimNode =
+  if n.kind in {nnkIdent, nnkAccQuoted, nnkSym, nnkOpenSymChoice, nnkClosedSymChoice}:
+    if n.eqIdent(name):
+      result = copy val
+    else:
+      result = n
+  elif n.kind in AtomicNodes or n.len == 0:
+    result = n
+  else:
+    result = newNimNode(n.kind, n)
+    for a in n:
+      result.add(crudeReplaceIdent(a, name, val))
+
+macro genRenameCase(fields: static openArray[(string, FieldJsonOptions)], key: string, v: untyped): untyped =
+  result = newNimNode(nnkCaseStmt, v)
+  result.add key
+  for fieldName, options in fields.items:
+    if not options.ignoreRead:
+      var branch = newTree(nnkOfBranch)
+      let readNames = getReadNames(fieldName, options)
+      for name in readNames:
+        branch.add newLit(name)
+      #branch.add crudeReplaceIdent(body, "field", newDotExpr(copy v, ident fieldName))
+      let fieldIdent = ident fieldName
+      branch.add quote do:
+        # XXX compiler thinks this is immutable:
+        #read(reader, `v`.`fieldIdent`)
+        var v2 = default(typeof(`v`.`fieldIdent`))
+        read(reader, v2)
+        `v`.`fieldIdent` = v2
+      result.add branch
+  if result.len == 1:
+    result = newTree(nnkDiscardStmt, newEmptyNode())
+  else:
+    result.add newTree(nnkElse, quote do:
+      discard skipValue(reader))
 
 proc parseObjectInner[T](reader: var JsonReader, v: var T) {.inline.} =
   while reader.hasNext():
@@ -533,18 +556,21 @@ proc parseObjectInner[T](reader: var JsonReader, v: var T) {.inline.} =
     var key: string
     read(reader, key)
     eatChar(reader, ':')
-    # XXX most important change to go here: scan pragma for more general field options, which could also be hooked into
-    when compiles(renameHook(v, key)):
-      renameHook(v, key)
-    block all:
-      # XXX maybe optimize this to case with a macro, unlikely that name style changes in representation
-      for k, v in v.fieldPairs:
-        if k == key or snakeCase(k) == key:
-          var v2: type(v)
-          read(reader, v2)
-          v = v2
-          break all
-      discard skipValue(reader)
+    {.cast(uncheckedAssign).}:
+      const hasRenameHook = jsonyHookCompatibility and compiles(renameHook(v, key))
+      when hasRenameHook:
+        renameHook(v, key)
+        block all:
+          for k, v in v.fieldPairs:
+            if k == key or snakeCase(k) == key:
+              var v2: type(v)
+              read(reader, v2)
+              v = v2
+              break all
+        discard skipValue(reader)
+      else:
+        const fieldOptions = fieldOptionPairs(v)
+        genRenameCase(fieldOptions, key, v)
     eatSpace(reader)
     if reader.nextMatch(','):
       discard
@@ -588,6 +614,41 @@ proc read*[T: enum](reader: var JsonReader, v: var T) =
     except:
       reader.error("Can't parse enum.")
 
+template initObj[T](v: var T) =
+  when compiles(newHook(v)):
+    newHook(v)
+  elif compiles(new(v)):
+    new(v)
+
+template initObjVariant[T](v: var T, discrim) =
+  objvar.new(v, discrim)
+  when compiles(newHook(v)):
+    newHook(v)
+
+macro genDiscrimCase(fields: static openArray[(string, FieldJsonOptions)], key: string, v: typed): untyped =
+  let discrim = $discriminator(v)
+  result = newNimNode(nnkCaseStmt, v)
+  result.add key
+  for fieldName, options in fields.items:
+    if fieldName == discrim:
+      var branch = newTree(nnkOfBranch)
+      let readNames = getReadNames(fieldName, options)
+      for name in readNames:
+        branch.add newLit(name)
+      #branch.add crudeReplaceIdent(body, "field", newDotExpr(copy v, ident fieldName))
+      let fieldIdent = ident fieldName
+      branch.add quote do:
+        # XXX compiler thinks this is immutable:
+        #read(reader, `v`.`fieldIdent`)
+        var v2 = default(typeof(`v`.`fieldIdent`))
+        read(reader, v2)
+        initObjVariant(`v`, v2)
+        break
+      result.add branch
+  if result.len == 1:
+    result = newTree(nnkDiscardStmt, newEmptyNode())
+    error("could not find discriminator field " & discrim & " in object type somehow", v)
+
 proc read*[T: object|ref object](reader: var JsonReader, v: var T) =
   ## Parse an object or ref object.
   eatSpace(reader)
@@ -596,10 +657,7 @@ proc read*[T: object|ref object](reader: var JsonReader, v: var T) =
     return
   eatChar(reader, '{')
   when not v.isObjectVariant:
-    when compiles(newHook(v)):
-      newHook(v)
-    elif compiles(new(v)):
-      new(v)
+    initObj(v)
   else:
     # Try looking for the discriminatorFieldName, then parse as normal object.
     eatSpace(reader)
@@ -610,24 +668,23 @@ proc read*[T: object|ref object](reader: var JsonReader, v: var T) =
         var key: string
         read(reader, key)
         eatChar(reader, ':')
-        when compiles(renameHook(v, key)):
+        const hasRenameHook = jsonyHookCompatibility and compiles(renameHook(v, key))
+        when hasRenameHook:
           renameHook(v, key)
-        if key == v.discriminatorFieldName:
-          var discriminator: type(v.discriminatorField)
-          read(reader, discriminator)
-          new(v, discriminator)
-          when compiles(newHook(v)):
-            newHook(v)
-          break
+          if key == v.discriminatorFieldName:
+            var discriminator: type(v.discriminatorField)
+            read(reader, discriminator)
+            initObjVariant(v, discriminator)
+            break
+        else:
+          const fieldOptions = fieldOptionPairs(v)
+          genDiscrimCase(fieldOptions, key, v)
         discard skipValue(reader)
         if not reader.peekMatch('}'):
           # needs space skipped above?
           eatChar(reader, ',')
         else:
-          when compiles(newHook(v)):
-            newHook(v)
-          elif compiles(new(v)):
-            new(v)
+          initObj(v)
           break
     finally:
       reader.bufferPos = saveI

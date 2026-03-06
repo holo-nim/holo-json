@@ -1,5 +1,6 @@
-import ./[common, dumperdef], hemodyne/syncartery, std/[json, typetraits, unicode]
+import ./[common, dumperdef], hemodyne/syncartery, std/[json, typetraits, unicode, tables]
 import std/math # for classify
+import private/fields
 
 export JsonDumper, JsonDumperOptions, initJsonDumper, startDump
 
@@ -389,9 +390,9 @@ proc dump*(dumper: var JsonDumper, v: object) =
       inc i
   else:
     # Normal objects.
+    const fieldOptions = fieldOptionTable(v)
     for k, e in v.fieldPairs:
-      # XXX rename hook here too also important
-      when compiles(skipHook(type(v), k)):
+      when jsonyHookCompatibility and compiles(skipHook(type(v), k)):
         when skipHook(type(v), k):
           discard
         else:
@@ -401,11 +402,14 @@ proc dump*(dumper: var JsonDumper, v: object) =
           dumper.dump(e)
           inc i
       else:
-        if i > 0:
-          dumper.write ','
-        dumper.dumpKey(k)
-        dumper.dump(e)
-        inc i
+        const options = fieldOptions.getOrDefault(k)
+        when not options.ignoreDump:
+          if i > 0:
+            dumper.write ','
+          # rename hook not in original jsony
+          dumper.dumpKey(getDumpName(k, options))
+          dumper.dump(e)
+          inc i
   dumper.write '}'
 
 proc dump*[N, T](dumper: var JsonDumper, v: array[N, t[T]]) =
