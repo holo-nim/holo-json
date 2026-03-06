@@ -43,6 +43,12 @@ proc iterFieldNames(names: var seq[(string, NimNode)], list: NimNode) =
 const
   nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
+proc matchCustomPragma(sym: NimNode): bool =
+  result = sym.kind == nnkSym and sym.eqIdent"json"
+  if result:
+    let impl = getImpl(sym)
+    result = impl != nil and impl.kind == nnkTemplateDef
+
 macro fieldOptionPairs*[T: object | ref object | tuple](obj: T): untyped =
   var names: seq[(string, NimNode)] = @[]
   var t = obj
@@ -78,19 +84,12 @@ macro fieldOptionPairs*[T: object | ref object | tuple](obj: T): untyped =
     else:
       error "got unknown object type kind " & $impl.kind, impl
   result = newNimNode(nnkBracket, obj)
-  var pragmaSym = bindSym("json")
-  var pragmaSyms: seq[NimNode] = @[]
-  if pragmaSym.kind in {nnkOpenSymChoice, nnkClosedSymChoice}:
-    for s in pragmaSym:
-      let imp = getImpl(s)
-      if imp != nil and imp.kind == nnkTemplateDef:
-        pragmaSyms.add s
   for name, prag in names.items:
     var val: NimNode = nil
     if prag != nil and not isTuple:
       # again copied from macros.customPragma
       for p in prag:
-        if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] in pragmaSyms:
+        if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and matchCustomPragma(p[0]):
           if p.len == 2 or (p.len == 3 and p[1].kind == nnkSym and p[1].symKind == nskType):
             val = p[1]
           else:
