@@ -1,7 +1,7 @@
 import hemodyne/syncartery
 
 type
-  EnumOutput = enum
+  EnumOutput* = enum
     EnumName, EnumOrd
   JsonDumperOptions* = object
     keepUtf8*: bool = true

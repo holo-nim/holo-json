@@ -80,7 +80,7 @@ proc peek*(reader: var JsonReader, c: var char, offset: int): bool {.inline.} =
 proc unsafePeek*(reader: var JsonReader, offset: int): char {.inline.} =
   result = reader.vein.buffer[reader.bufferPos + 1 + offset]
 
-template peekStrImpl(reader: var JsonReader, cs) {.dirty.} =
+template peekStrImpl(reader: var JsonReader, cs) =
   result = false
   let n = cs.len
   if reader.bufferPos + n >= reader.vein.buffer.len:
@@ -210,7 +210,7 @@ proc peekMatch*(reader: var JsonReader, cs: set[char], offset: int): bool {.inli
   var dummy: char
   result = reader.peekMatch(cs, offset, dummy)
 
-template peekMatchStrImpl(reader: var JsonReader, str) {.dirty.} =
+template peekMatchStrImpl(reader: var JsonReader, str) =
   if reader.bufferPos + str.len >= reader.vein.buffer.len:
     reader.loadBufferBy(str.len)
   if reader.bufferPos + str.len < reader.vein.buffer.len:
