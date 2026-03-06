@@ -1,4 +1,4 @@
-import json, jsony
+import json, holojsony
 
 block:
   type Entry = object

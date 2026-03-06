@@ -1,10 +1,10 @@
-import jsony
+import holojsony, holojsony/readerdef
 
-doAssertRaises(JsonError):
+doAssertRaises(CatchableError):
   discard "{invalid".fromJson()
 
-doAssertRaises(JsonError):
+doAssertRaises(CatchableError):
   discard "{a:}".fromJson()
 
-doAssertRaises(JsonError):
+doAssertRaises(CatchableError):
   discard "1.23.23".fromJson()

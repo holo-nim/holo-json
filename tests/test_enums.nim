@@ -1,4 +1,4 @@
-import jsony
+import holojsony
 
 type Color = enum
   cRed

@@ -1,9 +1,12 @@
-import benchy, eminim, jason, jsony, macros, random, streams
+import benchy, eminim, jason, macros, random, streams
+import jsony
+import holojsony
 when defined(packedjson):
   import packedjson, packedjson/deserialiser
 else:
   import json
-when not defined(gcArc):
+const status = not defined(gcArc)
+when status:
   import serialization
   import json_serialization except Json, toJson
 #from deser_json import parse, to
@@ -33,19 +36,23 @@ proc genTree(depth: int): Node =
 
 var tree = genTree(10)
 
-var treeStr = tree.toJson()
+var treeStr = jsony.toJson(tree)
 echo treeStr[0 ..< 100]
 echo genId, " node tree:"
 
 timeIt "treeform/jsony", 100:
-  keep treeStr.fromJson(Node)
+  keep jsony.fromJson(treeStr, Node)
 
-when not defined(gcArc):
+timeIt "holojsony", 100:
+  keep holojsony.fromJson(treeStr, Node)
+
+when status:
   timeIt "status-im/nim-json-serialization", 100:
     keep json_serialization.Json.decode(treeStr, Node)
 
-timeIt "planetis-m/eminim", 100:
-  keep newStringStream(treeStr).jsonTo(Node)
+when false:
+  timeIt "planetis-m/eminim", 100:
+    keep newStringStream(treeStr).jsonTo(Node)
 
 when defined(packedjson):
   timeIt "araq/packedjson", 100:
@@ -61,9 +68,12 @@ else:
 echo "serialize:"
 
 timeIt "treeform/jsony", 100:
-  keep tree.toJson()
+  keep jsony.toJson(tree)
 
-when not defined(gcArc):
+timeIt "holojsony", 100:
+  keep holojsony.toJson(tree)
+
+when status:
   timeIt "status-im/nim-json-serialization", 100:
     keep json_serialization.Json.encode(tree)
   doAssert json_serialization.Json.encode(tree) == treeStr

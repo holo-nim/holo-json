@@ -1,4 +1,4 @@
-import jsony
+import holojsony
 
 block:
   doAssert "true".fromJson(bool) == true

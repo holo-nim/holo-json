@@ -1,9 +1,0 @@
-version     = "1.1.6"
-author      = "Andre von Houck"
-description = "A loose direct to object json parser with hooks."
-license     = "MIT"
-
-srcDir = "src"
-
-requires "nim >= 1.4.0"
-requires "https://github.com/metagn/hemodyne"

@@ -1,4 +1,4 @@
-import jsony, options
+import holojsony, options
 
 var
   a: Option[int] = some(123)

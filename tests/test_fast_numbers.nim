@@ -1,20 +1,20 @@
-import jsony
+import holojsony, holojsony/readerdef
 
-doAssertRaises JsonError:
+doAssertRaises CatchableError:
   var
-    s = ""
-    i = 0
+    reader = initJsonReader()
     n: uint64
-  parseHook(s, i, n)
+  read(reader, n)
 
 for i in 0 .. 10000:
   var s = ""
-  dumpHook(s, i)
+  dump(s, i)
   doAssert $i == s
 
 for i in 0 .. 10000:
   var s = $i
-  var idx = 0
+  var reader = initJsonReader()
+  reader.startRead(s)
   var v: int
-  parseHook(s, idx, v)
+  read(reader, v)
   doAssert i == v

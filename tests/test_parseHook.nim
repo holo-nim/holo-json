@@ -1,13 +1,16 @@
-import json, jsony, strutils, tables, times
+import json, holojsony, strutils, tables
+const doTimes = not defined(nimscript)
+when doTimes:
+  import times
 
 type Fraction = object
   numerator: int
   denominator: int
 
-proc parseHook(s: string, i: var int, v: var Fraction) =
+proc read(reader: var JsonReader, v: var Fraction) =
   ## Instead of looking for fraction object look for a string.
   var str: string
-  parseHook(s, i, str)
+  read(reader, str)
   let arr = str.split("/")
   v = Fraction()
   v.numerator = parseInt(arr[0])
@@ -17,13 +20,14 @@ var frac = """ "1/3" """.fromJson(Fraction)
 doAssert frac.numerator == 1
 doAssert frac.denominator == 3
 
-proc parseHook(s: string, i: var int, v: var DateTime) =
-  var str: string
-  parseHook(s, i, str)
-  v = parse(str, "yyyy-MM-dd hh:mm:ss")
+when doTimes:
+  proc read(reader: var JsonReader, v: var DateTime) =
+    var str: string
+    read(reader, str)
+    v = parse(str, "yyyy-MM-dd hh:mm:ss")
 
-var dt = """ "2020-01-01 00:00:00" """.fromJson(DateTime)
-doAssert dt.year == 2020
+  var dt = """ "2020-01-01 00:00:00" """.fromJson(DateTime)
+  doAssert dt.year == 2020
 
 type Entry = object
   id: string
@@ -36,9 +40,9 @@ let data = """{
   "3": {"count":99, "filled": 99}
 }"""
 
-proc parseHook(s: string, i: var int, v: var seq[Entry]) =
+proc read(reader: var JsonReader, v: var seq[Entry]) =
   var table: Table[string, Entry]
-  parseHook(s, i, table)
+  read(reader, table)
   for k, entry in table.mpairs:
     entry.id = k
     v.add(entry)
@@ -67,9 +71,9 @@ let data2 = """{
   "changes": [1, 2, "hi"]
 }"""
 
-proc parseHook(s: string, i: var int, v: var Entry2) =
+proc read(reader: var JsonReader, v: var Entry2) =
   var entry: JsonNode
-  parseHook(s, i, entry)
+  read(reader, entry)
   v = Entry2()
   v.id = entry["id"].getInt()
   v.pre = entry["changes"][0].getInt()
@@ -85,23 +89,31 @@ doAssert $s2 == """(id: 3444, pre: 1, post: 2, kind: "hi")"""
 type Header = object
   key: string
   value: string
-proc parseHook(s: string, i: var int, v: var seq[Header]) =
-  eatChar(s, i, '{')
-  while i < s.len:
-    eatSpace(s, i)
-    if i < s.len and s[i] == '}':
-      break
-    var key, value: string
-    parseHook(s, i, key)
-    eatChar(s, i, ':')
-    parseHook(s, i, value)
-    v.add(Header(key: key, value: value))
-    eatSpace(s, i)
-    if i < s.len and s[i] == ',':
-      inc i
-    else:
-      break
-  eatChar(s, i, '}')
+import holojsony/readerdef
+proc read(reader: var JsonReader, v: var seq[Header]) =
+  if false:
+    eatChar(reader, '{')
+    while reader.hasNext():
+      eatSpace(reader)
+      if reader.peekMatch('}'):
+        break
+      var key, value: string
+      read(reader, key)
+      eatChar(reader, ':')
+      read(reader, value)
+      v.add(Header(key: key, value: value))
+      eatSpace(reader)
+      if reader.nextMatch(','):
+        discard
+      else:
+        break
+    eatChar(reader, '}')
+  else:
+    for key in readObject(reader):
+      var value: string
+      read(reader, value)
+      v.add(Header(key: key, value: value))
+
 
 let data3 = """{
   "Cache-Control": "private, max-age=0d",

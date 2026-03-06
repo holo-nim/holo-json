@@ -1,9 +1,12 @@
-import benchy, eminim, jason, jsony, random, streams
+import benchy, eminim, jason, random, streams
+import jsony
+import holojsony except toJson
 when defined(packedjson):
   import packedjson, packedjson/deserialiser
 else:
   import json
-when not defined(gcArc):
+const status = not defined(gcArc)
+when status:
   import serialization
   import json_serialization except Json, toJson
 
@@ -12,9 +15,13 @@ block:
   var jsonStr = "\"hello there how are you?\""
   timeIt "treeform/jsony", 100:
     for i in 0 ..< 1000:
-      keep jsonStr.fromJson(string)
+      keep jsony.fromJson(jsonStr, string)
 
-  when not defined(gcArc):
+  timeIt "holojsony", 100:
+    for i in 0 ..< 1000:
+      keep holojsony.fromJson(jsonStr, string)
+
+  when status:
     timeIt "status-im/nim-json-serialization", 100:
       for i in 0 ..< 1000:
         keep json_serialization.Json.decode(jsonStr, string)
@@ -28,12 +35,15 @@ block:
     id: int
     kids: seq[Node]
   var node = Node()
-  var jsonStr = node.toJson()
+  var jsonStr = jsony.toJson(node)
   timeIt "treeform/jsony", 100:
     for i in 0 ..< 1000:
-      keep jsonStr.fromJson(Node)
+      keep jsony.fromJson(jsonStr, Node)
+  timeIt "holojsony", 100:
+    for i in 0 ..< 1000:
+      keep holojsony.fromJson(jsonStr, Node)
 
-  when not defined(gcArc):
+  when status:
     timeIt "status-im/nim-json-serialization", 100:
       for i in 0 ..< 1000:
         keep json_serialization.Json.decode(jsonStr, Node)
@@ -51,9 +61,11 @@ block:
     seqObj.add(Node())
   var jsonStr = seqObj.toJson()
   timeIt "treeform/jsony", 100:
-    keep jsonStr.fromJson(seq[Node])
+    keep jsony.fromJson(jsonStr, seq[Node])
+  timeIt "holojsony", 100:
+    keep holojsony.fromJson(jsonStr, seq[Node])
 
-  when not defined(gcArc):
+  when status:
     timeIt "status-im/nim-json-serialization", 100:
       keep json_serialization.Json.decode(jsonStr, seq[Node])
 
@@ -67,13 +79,17 @@ block:
 
   timeIt "treeform/jsony", 100:
     for i in 0 ..< 1000:
-      keep number42.toJson()
+      keep jsony.toJson(number42)
+
+  timeIt "holojsony", 100:
+    for i in 0 ..< 1000:
+      keep holojsony.toJson(number42)
 
   timeIt "disruptek/jason", 100:
     for i in 0 ..< 1000:
       keep number42.jason.string
 
-  when not defined(gcArc):
+  when status:
     timeIt "status-im/nim-json-serialization", 100:
       for i in 0 ..< 1000:
         keep json_serialization.Json.encode(number42)
@@ -88,13 +104,17 @@ block:
 
   timeIt "treeform/jsony", 100:
     for i in 0 ..< 1000:
-      keep hello.toJson()
+      keep jsony.toJson(hello)
+
+  timeIt "holojsony", 100:
+    for i in 0 ..< 1000:
+      keep holojsony.toJson(hello)
 
   timeIt "disruptek/jason", 100:
     for i in 0 ..< 1000:
       keep hello.jason.string
 
-  when not defined(gcArc):
+  when status:
     timeIt "status-im/nim-json-serialization", 100:
       for i in 0 ..< 1000:
         keep json_serialization.Json.encode(hello)
@@ -105,13 +125,17 @@ block:
 
   timeIt "treeform/jsony", 100:
     for i in 0 ..< 1000:
-      keep numArray.toJson()
+      keep jsony.toJson(numArray)
+
+  timeIt "holojsony", 100:
+    for i in 0 ..< 1000:
+      keep holojsony.toJson(numArray)
 
   timeIt "disruptek/jason", 100:
     for i in 0 ..< 1000:
       keep numArray.jason.string
 
-  when not defined(gcArc):
+  when status:
     timeIt "status-im/nim-json-serialization", 100:
       for i in 0 ..< 1000:
         keep json_serialization.Json.encode(numArray)
@@ -128,13 +152,17 @@ block:
 
   timeIt "treeform/jsony", 100:
     for i in 0 ..< 1000:
-      keep node.toJson()
+      keep jsony.toJson(node)
+
+  timeIt "holojsony", 100:
+    for i in 0 ..< 1000:
+      keep holojsony.toJson(node)
 
   timeIt "disruptek/jason", 100:
     for i in 0 ..< 1000:
       keep node.jason.string
 
-  when not defined(gcArc):
+  when status:
     timeIt "status-im/nim-json-serialization", 100:
       for i in 0 ..< 1000:
         keep json_serialization.Json.encode(node)

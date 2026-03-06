@@ -1,4 +1,4 @@
-import jsony
+import holojsony
 
 block:
   var s = "[1, 2, 3]"
@@ -33,5 +33,5 @@ block:
 
 block:
   var s = "[1, 2, 3] asdf"
-  doAssertRaises JsonError:
+  doAssertRaises CatchableError:
     discard s.fromJson(array[3, int])

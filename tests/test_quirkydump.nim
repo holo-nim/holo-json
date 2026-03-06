@@ -1,4 +1,4 @@
-import jsony, options
+import holojsony, holojsony/dumperdef, options
 
 type
   Bar = ref object
@@ -22,21 +22,21 @@ proc camel2snake*(s: string): string =
     else:
       result.add(s[i])
 
-template dumpKey(s: var string, v: string) =
+template dumpKey(s: var JsonDumper, v: string) =
   const v2 = v.camel2snake().toJson() & ":"
-  s.add v2
+  s.write v2
 
-proc dumpHook*(s: var string, v: object) =
-  s.add '{'
+proc dump*(s: var JsonDumper, v: object) =
+  s.write '{'
   var i = 0
   when compiles(for k, e in v.pairs: discard):
     # Tables and table like objects.
     for k, e in v.pairs:
       if i > 0:
-        s.add ','
-      s.dumpHook(k)
-      s.add ':'
-      s.dumpHook(e)
+        s.write ','
+      s.dump(k)
+      s.write ':'
+      s.dump(e)
       inc i
   else:
     # Normal objects.
@@ -44,17 +44,17 @@ proc dumpHook*(s: var string, v: object) =
       when compiles(e.isSome):
         if e.isSome:
           if i > 0:
-            s.add ','
+            s.write ','
           s.dumpKey(k)
-          s.dumpHook(e)
+          s.dump(e)
           inc i
       else:
         if i > 0:
-          s.add ','
+          s.write ','
         s.dumpKey(k)
-        s.dumpHook(e)
+        s.dump(e)
         inc i
-  s.add '}'
+  s.write '}'
 
 var foo = Foo(
   idRef: "0000-1234",

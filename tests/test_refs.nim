@@ -1,4 +1,4 @@
-import jsony
+import holojsony
 
 proc newRef[T](v: T): ref T =
   new(result)

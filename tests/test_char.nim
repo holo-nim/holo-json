@@ -1,4 +1,4 @@
-import jsony
+import holojsony
 
 doAssert """ "a" """.fromJson(char) == 'a'
 doAssert """["a"]""".fromJson(seq[char]) == @['a']

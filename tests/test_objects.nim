@@ -1,4 +1,4 @@
-import jsony, strutils
+import holojsony, strutils
 
 block:
   type Entry1 = object
@@ -284,7 +284,6 @@ block:
 
 # test https://forum.nim-lang.org/t/7619
 
-import jsony
 type
   FooBar = object
     `Foo Bar`: string

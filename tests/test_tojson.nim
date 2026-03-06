@@ -1,7 +1,7 @@
-import json, jsony, strutils, tables
+import json, holojsony, strutils, tables
 
 proc match[T](what: T) =
-  doAssert what.toJson() == $(%what)
+  doAssert what.toJson() == $(%what), $(what, what.toJson(), %what)
 
 doAssert 1.uint8.toJson() == "1"
 doAssert 1.uint16.toJson() == "1"
@@ -64,17 +64,20 @@ tb["hi"] = 1
 tb["bye"] = 2
 doAssert tb.toJson() == """{"hi":1,"bye":2}""" or tb.toJson() == """{"bye":2,"hi":1}"""
 
+import holojsony/dumperdef
+
 type Fraction = object
   numerator: int
   denominator: int
 
-proc dumpHook(s: var string, v: Fraction) =
+proc dump(s: var JsonDumper, v: Fraction) =
   ## Output fraction type as a string "x/y".
-  s.add '"'
-  s.add $v.numerator
-  s.add '/'
-  s.add $v.denominator
-  s.add '"'
+  s.write '"'
+  s.write $v.numerator
+  s.write '/'
+  s.write $v.denominator
+  s.write '"'
+  #s.dump $v.numerator & '/' & $v.denominator
 
 var f = Fraction(numerator: 10, denominator: 13)
 doAssert f.toJson() == "\"10/13\""
