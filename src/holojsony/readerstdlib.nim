@@ -2,6 +2,7 @@ import ./[common, readerdef, readerbasic], std/[options, tables, sets]
 
 proc read*[T](reader: var JsonReader, v: var Option[T]) =
   ## Parse an Option.
+  mixin read
   eatSpace(reader)
   if reader.nextMatch("null"):
     # v = none(T)?
@@ -12,6 +13,7 @@ proc read*[T](reader: var JsonReader, v: var Option[T]) =
 
 proc read*[K: string | enum, V](reader: var JsonReader, v: var SomeTable[K, V]) =
   ## Parse an object.
+  mixin read
   when v is ref:
     if reader.nextMatch("null"):
       # this is added this time
@@ -36,6 +38,7 @@ proc read*[K: string | enum, V](reader: var JsonReader, v: var SomeTable[K, V]) 
 
 proc read*[T](reader: var JsonReader, v: var SomeSet[T]) =
   ## Parses `HashSet` or `OrderedSet`.
+  mixin read
   for i in readArray(reader):
     var e: T
     read(reader, e)
@@ -44,6 +47,7 @@ proc read*[T](reader: var JsonReader, v: var SomeSet[T]) =
 proc read*[T](reader: var JsonReader, v: var set[T]) =
   ## Parses the built-in `set` type.
   # separate overload for bitflags or something
+  mixin read
   for i in readArray(reader):
     var e: T
     read(reader, e)

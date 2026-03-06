@@ -82,6 +82,7 @@ template withRawObjectField*(dumper: var JsonDumper, arr: var ObjectDump, name: 
   finishObjectField(dumper, arr)
 
 proc dump*[T: distinct](dumper: var JsonDumper, v: T) {.inline.} =
+  mixin dump
   dumper.dump(distinctBase(T)(v))
 
 proc dump*(dumper: var JsonDumper, v: bool) {.inline.} =
@@ -338,6 +339,7 @@ proc dump*(dumper: var JsonDumper, v: char) =
   dumper.write '"'
 
 proc dump*(dumper: var JsonDumper, v: tuple) =
+  mixin dump
   dumper.write '['
   var i = 0
   for _, e in v.fieldPairs:
@@ -355,6 +357,7 @@ proc dump*(dumper: var JsonDumper, v: enum) {.inline.} =
     dumper.dump(ord(v))
 
 proc dump*[N, T](dumper: var JsonDumper, v: array[N, T]) =
+  mixin dump
   dumper.write '['
   var i = 0
   for e in v:
@@ -365,6 +368,7 @@ proc dump*[N, T](dumper: var JsonDumper, v: array[N, T]) =
   dumper.write ']'
 
 proc dump*[T](dumper: var JsonDumper, v: seq[T]) =
+  mixin dump
   dumper.write '['
   for i, e in v:
     if i != 0:
@@ -377,6 +381,7 @@ template dumpKey(dumper: var JsonDumper, v: static string) =
   dumper.write v2
 
 proc dump*(dumper: var JsonDumper, v: object) =
+  mixin dump
   dumper.write '{'
   var i = 0
   when compiles(for k, e in v.pairs: discard):
@@ -413,6 +418,7 @@ proc dump*(dumper: var JsonDumper, v: object) =
   dumper.write '}'
 
 proc dump*[N, T](dumper: var JsonDumper, v: array[N, t[T]]) =
+  mixin dump
   dumper.write '{'
   var i = 0
   # Normal objects.
@@ -426,6 +432,7 @@ proc dump*[N, T](dumper: var JsonDumper, v: array[N, t[T]]) =
   dumper.write '}'
 
 proc dump*(dumper: var JsonDumper, v: ref) {.inline.} =
+  mixin dump
   if v == nil:
     dumper.write "null"
   else:

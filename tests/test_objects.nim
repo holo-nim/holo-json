@@ -50,7 +50,7 @@ type
     id: string
     bar: Bar4
 
-proc newHook(foo: var Foo4) =
+proc startObjectRead(reader: var JsonReader, foo: var Foo4) =
   foo = Foo4()
   foo.visible = "yes"
 
@@ -67,7 +67,7 @@ type
   Foo5 = object
     visible: string
     id: string
-proc newHook(foo: var Foo5) =
+proc startObjectRead(reader: var JsonReader, foo: var Foo5) =
   foo.visible = "yes"
 
 block:
@@ -140,12 +140,26 @@ doAssert snakeCase("color_rule") == "color_rule"
 doAssert snakeCase("httpGet") == "http_get"
 doAssert snakeCase("restAPI") == "rest_api"
 
-block:
-  type Entry5 = object
+import holojsony/[readerdef, dumperdef]
+type
+  Entry5 = object
     color: string
+  Nullable[T] = object
+    inner: T
+proc read*[T](reader: var JsonReader, v: var Nullable[T]) =
+  if reader.nextMatch("null"):
+    return
+  read(reader, v.inner)
+proc dump*[T](dumper: var JsonDumper, v: Nullable[T]) =
+  if v.inner == default(T):
+    dumper.write "null"
+    return
+  dump(dumper, v.inner)
+block:
   var s = "null"
-  var v = s.fromJson(Entry5)
-  doAssert v.color == ""
+  var v = s.fromJson(Nullable[Entry5])
+  doAssert v.inner.color == ""
+  doAssert v.toJson() == "null", v.toJson
 
 block:
   type Entry6 = ref object
@@ -158,7 +172,7 @@ type Sizer = object
   size: int
   originalSize: int
 
-proc postHook(v: var Sizer) =
+proc finishObjectRead(reader: var JsonReader, v: var Sizer) =
   v.originalSize = v.size
 
 var sizer = """{"size":10}""".fromJson(Sizer)

@@ -118,7 +118,7 @@ proc readKind*(reader: var JsonReader): JsonNodeKind {.inline.} =
 proc read*(reader: var JsonReader, v: var bool) =
   ## Will parse boolean true or false.
   when nimvm:
-    # XXX other should be fine for nimvm but test
+    # XXX either should be fine but test
     case parseSymbol(reader)
     of "true":
       v = true
@@ -176,7 +176,6 @@ proc read*(reader: var JsonReader, v: var SomeSignedInt) =
       try:
         v = type(v)(v2)
       except:
-        # XXX why here but not above?
         reader.error("Number type to small to contain the number.")
 
 proc read*(reader: var JsonReader, v: var SomeFloat) =
@@ -350,9 +349,10 @@ proc parseByte(reader: var JsonReader): byte =
 proc read*(reader: var JsonReader, v: var string) =
   ## Parse string.
   eatSpace(reader)
-  if reader.nextMatch("null"):
-    # XXX v = ""? allow null or not? configured by user?
-    return
+  if false:
+    # XXX disabled for now maybe config option
+    if reader.nextMatch("null"):
+      return
 
   eatChar(reader, '"')
 
@@ -435,12 +435,14 @@ proc read*(reader: var JsonReader, v: var char) =
 
 proc read*[T](reader: var JsonReader, v: var seq[T]) =
   ## Parse seq.
+  mixin read
   for i in readArray(reader):
     var element: T
     read(reader, element)
     v.add element
 
 proc read*[T: array](reader: var JsonReader, v: var T) =
+  mixin read
   eatSpace(reader)
   eatChar(reader, '[')
   var i = 0
@@ -463,9 +465,10 @@ proc read*[T: array](reader: var JsonReader, v: var T) =
   eatChar(reader, ']')
 
 proc read*[T: not object](reader: var JsonReader, v: var ref T) =
+  mixin read
   eatSpace(reader)
   if reader.nextMatch("null"):
-    # v = nil here? would be pretty unambiguous unlike string case
+    v = nil # changed from original jsony which did nothing, pretty unambiguous here
     return
   new(v)
   read(reader, v[])
@@ -553,7 +556,12 @@ macro genRenameCase(fields: static openArray[(string, FieldJsonOptions)], key: s
     result.add newTree(nnkElse, quote do:
       discard skipValue(reader))
 
+proc finishObjectRead*[T](reader: var JsonReader, v: var T) {.inline.} =
+  ## hook called into when an object/ref object/named tuple has finished reading all fields
+  discard
+
 proc parseObjectInner[T](reader: var JsonReader, v: var T) {.inline.} =
+  mixin read
   while reader.hasNext():
     eatSpace(reader)
     if reader.peekMatch('}'):
@@ -581,10 +589,11 @@ proc parseObjectInner[T](reader: var JsonReader, v: var T) {.inline.} =
       discard
     else:
       break
-  when compiles(postHook(v)):
-    postHook(v)
+  mixin finishObjectRead
+  finishObjectRead(reader, v)
 
 proc read*[T: tuple](reader: var JsonReader, v: var T) =
+  mixin read
   eatSpace(reader)
   when T.isNamedTuple():
     if reader.nextMatch('{'):
@@ -605,6 +614,7 @@ proc read*[T: enum](reader: var JsonReader, v: var T) =
   var strV: string
   if reader.peekMatch('"'):
     read(reader, strV)
+    # XXX same thing for fields for enums?
     when compiles(enumHook(strV, v)):
       enumHook(strV, v)
     else:
@@ -619,16 +629,20 @@ proc read*[T: enum](reader: var JsonReader, v: var T) =
     except:
       reader.error("Can't parse enum.")
 
+proc startObjectRead*[T](reader: var JsonReader, v: var T) {.inline.} =
+  ## hook called into when an object/ref object/named tuple are about to read their fields
+  discard
+
 template initObj[T](v: var T) =
-  when compiles(newHook(v)):
-    newHook(v)
-  elif compiles(new(v)):
+  mixin startObjectRead
+  when v is ref:
     new(v)
+  startObjectRead(reader, v)
 
 template initObjVariant[T](v: var T, discrim) =
+  mixin startObjectRead
   objvar.new(v, discrim)
-  when compiles(newHook(v)):
-    newHook(v)
+  startObjectRead(reader, v)
 
 macro genDiscrimCase(fields: static openArray[(string, FieldJsonOptions)], key: string, v: typed): untyped =
   let discrim = $discriminator(v)
@@ -663,10 +677,13 @@ macro genDiscrimCase(fields: static openArray[(string, FieldJsonOptions)], key: 
 
 proc read*[T: object|ref object](reader: var JsonReader, v: var T) =
   ## Parse an object or ref object.
+  mixin read
   eatSpace(reader)
-  if reader.nextMatch("null"):
-    # v = nil here? ambivalence makes it suspicious
-    return
+  when T is ref: # changed from original jsony, which allows object
+    # XXX maybe config option? has test
+    if reader.nextMatch("null"):
+      v = nil # changed from original jsony, where it does nothing
+      return
   eatChar(reader, '{')
   when not v.isObjectVariant:
     initObj(v)
@@ -705,6 +722,7 @@ proc read*[T: object|ref object](reader: var JsonReader, v: var T) =
   eatChar(reader, '}')
 
 proc read*[T: distinct](reader: var JsonReader, v: var T) {.inline.} =
+  mixin read
   read(reader, distinctBase(T)(v))
 
 proc read*(reader: var JsonReader, v: var JsonNode) =
@@ -757,7 +775,8 @@ proc fromJson*[T](s: string, x: typedesc[T]): T {.inline.} =
   ## Takes json and outputs the object it represents.
   ## * Extra json fields are ignored.
   ## * Missing json fields keep their default values.
-  ## * `proc newHook(foo: var ...)` Can be used to populate default values.
+  ## * `proc startObjectRead(reader: var JsonReader, foo: var ...)` Can be used to populate default values.
+  mixin read
   result = default(T)
   var reader = initJsonReader()
   reader.startRead(s)
