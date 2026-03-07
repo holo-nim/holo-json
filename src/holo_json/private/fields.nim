@@ -1,3 +1,5 @@
+## utilities for handling pragmas in object fields
+
 import std/[macros, tables], ../common
 
 proc realBasename(n: NimNode): string =
@@ -122,3 +124,5 @@ macro fieldOptionTable*[T: object | ref object | tuple](obj: T): Table[string, F
   result = newCall(bindSym"toTable", getAst(fieldOptionPairs(obj)))
 
 # XXX types could also define hooks for these too
+
+# XXX consider adapting enum fields

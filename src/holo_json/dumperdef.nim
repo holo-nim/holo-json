@@ -1,3 +1,5 @@
+## defines the `JsonDumper` object along with helpers to use it
+
 import hemodyne/syncartery
 
 type

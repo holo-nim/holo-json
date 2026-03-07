@@ -1,3 +1,5 @@
+## implements reading behavior for basic types
+
 import ./[common, readerdef], private/[objvar, fields, caseutils], hemodyne/syncvein
 import std/[strutils, unicode, parseutils, typetraits, macros, importutils]
 import std/json #from std/json import JsonNodeKind, JsonNode

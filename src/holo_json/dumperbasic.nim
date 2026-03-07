@@ -1,3 +1,5 @@
+## implements dumping behavior for basic types 
+
 import ./[common, dumperdef], hemodyne/syncartery, std/[json, typetraits, unicode, tables]
 import std/math # for classify
 import private/fields

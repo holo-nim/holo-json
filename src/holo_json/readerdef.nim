@@ -1,3 +1,5 @@
+## defines the `JsonReader` object along with helpers to use it
+
 import hemodyne/syncvein, ./common
 
 type

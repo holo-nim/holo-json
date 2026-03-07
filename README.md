@@ -5,3 +5,7 @@ JSON library based on the codebase and structure of [jsony](https://github.com/t
 Currently about 2x slower than original jsony, presumably due to the level of abstraction but I can't pinpoint why. (double pointer dereference for reading?) Still faster than the other libraries in the benchmarks though.
 
 Not compatible with jsony's parsing/conversion behavior.
+
+## Differences with jsony
+
+

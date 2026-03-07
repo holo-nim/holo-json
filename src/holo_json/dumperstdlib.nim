@@ -1,3 +1,5 @@
+## `dump` hooks for stdlib types
+
 import ./[dumperdef, dumperbasic], std/[options, sets, tables]
 
 proc dump*[T](dumper: var JsonDumper, v: Option[T]) {.inline.} =

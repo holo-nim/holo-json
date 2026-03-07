@@ -1,3 +1,5 @@
+# originally written by treeform in jsony https://github.com/treeform/jsony
+
 import std/macros
 
 proc hasKind(node: NimNode, kind: NimNodeKind): bool =

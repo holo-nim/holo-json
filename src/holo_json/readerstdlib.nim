@@ -1,3 +1,5 @@
+## `read` hooks for stdlib types
+
 import ./[readerdef, readerbasic], std/[options, tables, sets]
 
 proc read*[T](reader: var JsonReader, v: var Option[T]) =

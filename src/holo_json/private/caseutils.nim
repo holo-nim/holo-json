@@ -1,6 +1,7 @@
 import std/strutils
 
 proc snakeCaseDynamic*(s: string): string =
+  # originally written by treeform in jsony https://github.com/treeform/jsony
   if s.len == 0:
     return
   var prevCap = false
