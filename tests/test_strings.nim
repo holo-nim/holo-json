@@ -1,4 +1,4 @@
-import std/json, holojsony, std/unicode
+import std/json, holo_jsony, std/unicode
 
 block:
   var s = """ "hello" """

@@ -1,4 +1,4 @@
-import holojsony
+import holo_jsony
 
 block:
   var s = "[1, 2, 3]"

@@ -15,7 +15,7 @@ when (NimMajor, NimMinor) >= (1, 4):
 
 task docs, "build docs for all modules":
   when declared(buildDocs):
-    buildDocs(gitUrl = "https://github.com/metagn/holojsony")
+    buildDocs(gitUrl = "https://github.com/metagn/holo-jsony")
   else:
     echo "docs task not implemented, need nimbleutils"
 

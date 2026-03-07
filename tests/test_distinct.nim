@@ -1,4 +1,4 @@
-import holojsony
+import holo_jsony
 
 type
   Timestamp* = distinct float64 ## Always seconds since 1970 UTC.

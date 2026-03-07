@@ -1,6 +1,6 @@
 import benchy, eminim, jason, macros, random, streams
 import jsony
-import holojsony
+import holo_jsony
 when defined(packedjson):
   import packedjson, packedjson/deserialiser
 else:
@@ -43,8 +43,8 @@ echo genId, " node tree:"
 timeIt "treeform/jsony", 100:
   keep jsony.fromJson(treeStr, Node)
 
-timeIt "holojsony", 100:
-  keep holojsony.fromJson(treeStr, Node)
+timeIt "holo_jsony", 100:
+  keep holo_jsony.fromJson(treeStr, Node)
 
 when status:
   timeIt "status-im/nim-json-serialization", 100:
@@ -70,8 +70,8 @@ echo "serialize:"
 timeIt "treeform/jsony", 100:
   keep jsony.toJson(tree)
 
-timeIt "holojsony", 100:
-  keep holojsony.toJson(tree)
+timeIt "holo_jsony", 100:
+  keep holo_jsony.toJson(tree)
 
 when status:
   timeIt "status-im/nim-json-serialization", 100:

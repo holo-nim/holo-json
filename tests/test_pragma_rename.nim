@@ -1,4 +1,4 @@
-import holojsony, std/strutils
+import holo_jsony, std/strutils
 
 type Node = ref object
   kind {.json: "type".}: string

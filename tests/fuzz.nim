@@ -1,4 +1,4 @@
-import holojsony, os, random, strformat, strutils, tables
+import holo_jsony, os, random, strformat, strutils, tables
 
 type
   NodeKind = enum

@@ -1,6 +1,6 @@
 import benchy, eminim, jason, random, streams
 import jsony
-import holojsony except toJson
+import holo_jsony except toJson
 when defined(packedjson):
   import packedjson, packedjson/deserialiser
 else:
@@ -17,9 +17,9 @@ block:
     for i in 0 ..< 1000:
       keep jsony.fromJson(jsonStr, string)
 
-  timeIt "holojsony", 100:
+  timeIt "holo_jsony", 100:
     for i in 0 ..< 1000:
-      keep holojsony.fromJson(jsonStr, string)
+      keep holo_jsony.fromJson(jsonStr, string)
 
   when status:
     timeIt "status-im/nim-json-serialization", 100:
@@ -39,9 +39,9 @@ block:
   timeIt "treeform/jsony", 100:
     for i in 0 ..< 1000:
       keep jsony.fromJson(jsonStr, Node)
-  timeIt "holojsony", 100:
+  timeIt "holo_jsony", 100:
     for i in 0 ..< 1000:
-      keep holojsony.fromJson(jsonStr, Node)
+      keep holo_jsony.fromJson(jsonStr, Node)
 
   when status:
     timeIt "status-im/nim-json-serialization", 100:
@@ -62,8 +62,8 @@ block:
   var jsonStr = seqObj.toJson()
   timeIt "treeform/jsony", 100:
     keep jsony.fromJson(jsonStr, seq[Node])
-  timeIt "holojsony", 100:
-    keep holojsony.fromJson(jsonStr, seq[Node])
+  timeIt "holo_jsony", 100:
+    keep holo_jsony.fromJson(jsonStr, seq[Node])
 
   when status:
     timeIt "status-im/nim-json-serialization", 100:
@@ -81,11 +81,11 @@ block:
     for i in 0 ..< 1000:
       keep jsony.toJson(number42)
 
-  timeIt "holojsony", 100:
+  timeIt "holo_jsony", 100:
     for i in 0 ..< 1000:
-      keep holojsony.toJson(number42)
+      keep holo_jsony.toJson(number42)
 
-  timeIt "holojsony dumper", 100:
+  timeIt "holo_jsony dumper", 100:
     var dumper = initJsonDumper()
     for i in 0 ..< 1000:
       dumper.startDump()
@@ -113,11 +113,11 @@ block:
     for i in 0 ..< 1000:
       keep jsony.toJson(hello)
 
-  timeIt "holojsony", 100:
+  timeIt "holo_jsony", 100:
     for i in 0 ..< 1000:
-      keep holojsony.toJson(hello)
+      keep holo_jsony.toJson(hello)
 
-  timeIt "holojsony dumper", 100:
+  timeIt "holo_jsony dumper", 100:
     var dumper = initJsonDumper()
     for i in 0 ..< 1000:
       dumper.startDump()
@@ -141,9 +141,9 @@ block:
     for i in 0 ..< 1000:
       keep jsony.toJson(numArray)
 
-  timeIt "holojsony", 100:
+  timeIt "holo_jsony", 100:
     for i in 0 ..< 1000:
-      keep holojsony.toJson(numArray)
+      keep holo_jsony.toJson(numArray)
 
   timeIt "disruptek/jason", 100:
     for i in 0 ..< 1000:
@@ -168,9 +168,9 @@ block:
     for i in 0 ..< 1000:
       keep jsony.toJson(node)
 
-  timeIt "holojsony", 100:
+  timeIt "holo_jsony", 100:
     for i in 0 ..< 1000:
-      keep holojsony.toJson(node)
+      keep holo_jsony.toJson(node)
 
   timeIt "disruptek/jason", 100:
     for i in 0 ..< 1000:

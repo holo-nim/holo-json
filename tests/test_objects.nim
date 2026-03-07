@@ -1,4 +1,4 @@
-import holojsony, std/strutils
+import holo_jsony, std/strutils
 
 block:
   type Entry1 = object
@@ -140,7 +140,7 @@ doAssert snakeCase("color_rule") == "color_rule"
 doAssert snakeCase("httpGet") == "http_get"
 doAssert snakeCase("restAPI") == "rest_api"
 
-import holojsony/[readerdef, dumperdef]
+import holo_jsony/[readerdef, dumperdef]
 type
   Entry5 = object
     color: string

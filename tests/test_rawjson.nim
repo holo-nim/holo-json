@@ -1,4 +1,4 @@
-import holojsony
+import holo_jsony
 
 type
   Message = object

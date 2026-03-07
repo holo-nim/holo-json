@@ -1,4 +1,4 @@
-import holojsony, holojsony/dumperdef, std/options
+import holo_jsony, holo_jsony/dumperdef, std/options
 
 type
   Bar = ref object

@@ -1,4 +1,4 @@
-import std/json, holojsony, std/strutils, std/tables
+import std/json, holo_jsony, std/strutils, std/tables
 
 proc match[T](what: T) =
   doAssert what.toJson() == $(%what), $(what, what.toJson(), %what)
@@ -64,7 +64,7 @@ tb["hi"] = 1
 tb["bye"] = 2
 doAssert tb.toJson() == """{"hi":1,"bye":2}""" or tb.toJson() == """{"bye":2,"hi":1}"""
 
-import holojsony/dumperdef
+import holo_jsony/dumperdef
 
 type Fraction = object
   numerator: int

@@ -1,4 +1,4 @@
-import holojsony
+import holo_jsony
 
 doAssertRaises(CatchableError):
   discard "{invalid".fromJson()

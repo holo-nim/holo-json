@@ -1,4 +1,4 @@
-import std/json, holojsony, std/strutils, std/tables
+import std/json, holo_jsony, std/strutils, std/tables
 const doTimes = not defined(nimscript)
 when doTimes:
   import std/times
@@ -89,7 +89,7 @@ doAssert $s2 == """(id: 3444, pre: 1, post: 2, kind: "hi")"""
 type Header = object
   key: string
   value: string
-import holojsony/readerdef
+import holo_jsony/readerdef
 proc read(reader: var JsonReader, v: var seq[Header]) =
   if false:
     eatChar(reader, '{')
