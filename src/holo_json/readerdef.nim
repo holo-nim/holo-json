@@ -1,6 +1,6 @@
 ## defines the `JsonReader` object along with helpers to use it
 
-import hemodyne/syncvein, ./common
+import hemodyne/syncvein, ./common, std/streams
 
 type
   JsonReaderOptions* = object
@@ -33,6 +33,9 @@ proc startRead*(reader: var JsonReader, vein: Vein) {.inline.} =
 
 proc startRead*(reader: var JsonReader, str: string) {.inline.} =
   reader.startRead(initVein(str))
+
+proc startRead*(reader: var JsonReader, stream: Stream, loadAmount = 4) {.inline.} =
+  reader.startRead(initVein(stream, loadAmount))
 
 proc error*(reader: var JsonReader, msg: string) {.inline.} =
   ## Shortcut to raise an exception.

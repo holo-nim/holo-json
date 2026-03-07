@@ -1,6 +1,6 @@
 ## defines the `JsonDumper` object along with helpers to use it
 
-import hemodyne/syncartery
+import hemodyne/syncartery, std/streams
 
 type
   EnumOutput* = enum
@@ -39,6 +39,9 @@ proc startDump*(dumper: var JsonDumper, artery: Artery) {.inline.} =
 
 proc startDump*(dumper: var JsonDumper) {.inline.} =
   dumper.startDump(Artery(buffer: "", bufferConsumer: nil))
+
+proc startDump*(dumper: var JsonDumper, stream: Stream) {.inline.} =
+  dumper.startDump(initArtery(stream))
 
 proc finishDump*(dumper: var JsonDumper): string {.inline.} =
   ## returns leftover buffer
