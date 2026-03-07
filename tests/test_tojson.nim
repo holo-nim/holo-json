@@ -64,8 +64,6 @@ tb["hi"] = 1
 tb["bye"] = 2
 doAssert tb.toJson() == """{"hi":1,"bye":2}""" or tb.toJson() == """{"bye":2,"hi":1}"""
 
-import holo_jsony/dumperdef
-
 type Fraction = object
   numerator: int
   denominator: int

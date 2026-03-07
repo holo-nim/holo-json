@@ -140,7 +140,6 @@ doAssert snakeCase("color_rule") == "color_rule"
 doAssert snakeCase("httpGet") == "http_get"
 doAssert snakeCase("restAPI") == "rest_api"
 
-import holo_jsony/[readerdef, dumperdef]
 type
   Entry5 = object
     color: string

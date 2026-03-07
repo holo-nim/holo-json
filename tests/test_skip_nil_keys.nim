@@ -1,4 +1,4 @@
-import holo_jsony, holo_jsony/dumperdef
+import holo_jsony
 
 proc dump*(s: var JsonDumper, v: object) =
   s.write '{'
