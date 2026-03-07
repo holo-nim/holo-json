@@ -1,6 +1,6 @@
 import benchy, jason
 from jsony import nil
-from holo_jsony import nil
+from holo_json import nil
 
 const
   number11 = 11
@@ -11,9 +11,9 @@ timeIt "treeform/jsony number", 100:
   for i in 0 .. 1000:
     discard jsony.toStaticJson(number11)
 
-timeIt "holo_jsony number", 100:
+timeIt "holo_json number", 100:
   for i in 0 .. 1000:
-    discard holo_jsony.toStaticJson(number11)
+    discard holo_json.toStaticJson(number11)
 
 timeIt "disruptek/jason number", 100:
   for i in 0 .. 1000:
@@ -22,8 +22,8 @@ timeIt "disruptek/jason number", 100:
 timeIt "treeform/jsony string", 100:
   discard jsony.toStaticJson(stringHello)
 
-timeIt "holo_jsony string", 100:
-  discard holo_jsony.toStaticJson(stringHello)
+timeIt "holo_json string", 100:
+  discard holo_json.toStaticJson(stringHello)
 
 timeIt "disruptek/jason string", 100:
   for i in 0 .. 1000:
@@ -33,9 +33,9 @@ timeIt "treeform/jsony seq", 100:
   for i in 0 .. 1000:
     discard jsony.toStaticJson(seqOfInts)
 
-timeIt "holo_jsony seq", 100:
+timeIt "holo_json seq", 100:
   for i in 0 .. 1000:
-    discard holo_jsony.toStaticJson(seqOfInts)
+    discard holo_json.toStaticJson(seqOfInts)
 
 timeIt "disruptek/jason seq", 100:
   for i in 0 .. 1000:
@@ -68,9 +68,9 @@ timeIt "treeform/jsony object", 100:
   for i in 0 .. 1000:
     discard jsony.toStaticJson(thing)
 
-timeIt "holo_jsony object", 100:
+timeIt "holo_json object", 100:
   for i in 0 .. 1000:
-    discard holo_jsony.toStaticJson(thing)
+    discard holo_json.toStaticJson(thing)
 
 timeIt "disruptek/jason object", 100:
   for i in 0 .. 1000:

@@ -1,4 +1,4 @@
-import holo_jsony, std/options
+import holo_json, std/options
 
 type
   Bar = ref object

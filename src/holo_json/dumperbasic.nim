@@ -377,7 +377,7 @@ proc dump*[T](dumper: var JsonDumper, v: seq[T]) =
   dumper.write ']'
 
 template dumpKey(dumper: var JsonDumper, v: static string) =
-  const v2 = holo_jsony.toJson(v) & ":"
+  const v2 = holo_json.toJson(v) & ":"
   dumper.write v2
 
 proc dump*(dumper: var JsonDumper, v: object) =

@@ -1,4 +1,4 @@
-import std/json, holo_jsony, std/strutils, std/tables
+import std/json, holo_json, std/strutils, std/tables
 const doTimes = not defined(nimscript)
 when doTimes:
   import std/times

@@ -1,4 +1,4 @@
-import holo_jsony, std/tables
+import holo_json, std/tables
 
 block:
 

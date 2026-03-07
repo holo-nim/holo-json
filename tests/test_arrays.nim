@@ -1,4 +1,4 @@
-import holo_jsony
+import holo_json
 
 block:
   var s = "[1, 2, 3]"

@@ -1,4 +1,4 @@
-import holo_jsony, std/strutils
+import holo_json, std/strutils
 
 block:
   type Entry1 = object

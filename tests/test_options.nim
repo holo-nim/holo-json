@@ -1,4 +1,4 @@
-import holo_jsony, std/options
+import holo_json, std/options
 
 var
   a: Option[int] = some(123)

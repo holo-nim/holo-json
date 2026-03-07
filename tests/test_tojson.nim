@@ -1,4 +1,4 @@
-import std/json, holo_jsony, std/strutils, std/tables
+import std/json, holo_json, std/strutils, std/tables
 
 proc match[T](what: T) =
   doAssert what.toJson() == $(%what), $(what, what.toJson(), %what)
