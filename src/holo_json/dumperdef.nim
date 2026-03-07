@@ -7,7 +7,7 @@ type
     EnumName, EnumOrd
   JsonDumperOptions* = object
     keepUtf8*: bool = true
-      ## keeps valid utf 8 codepoints in strings as-is instead of encoding an escape sequence 
+      ## keeps valid utf 8 codepoints in strings as-is instead of encoding an escape sequence
     useXEscape*: bool
       ## uses \x instead of \u for characters known to be small, not in json standard
     rawJsNanInf*: bool

@@ -139,8 +139,8 @@ proc read*(reader: var JsonReader, v: var bool) =
     else:
       reader.error("Boolean true or false expected.")
 
-proc read*(reader: var JsonReader, v: var SomeUnsignedInt) =
-  ## Will parse unsigned integers.
+template uintImpl() =
+  # XXX clean this up later
   when nimvm:
     v = type(v)(parseBiggestUInt(parseSymbol(reader)))
   else:
@@ -161,8 +161,28 @@ proc read*(reader: var JsonReader, v: var SomeUnsignedInt) =
       reader.error("Number expected.")
     v = type(v)(v2)
 
-proc read*(reader: var JsonReader, v: var SomeSignedInt) =
-  ## Will parse signed integers.
+proc read*(reader: var JsonReader, v: var uint) =
+  ## Will parse unsigned integers.
+  uintImpl()
+
+proc read*(reader: var JsonReader, v: var uint8) =
+  ## Will parse unsigned integers.
+  uintImpl()
+
+proc read*(reader: var JsonReader, v: var uint16) =
+  ## Will parse unsigned integers.
+  uintImpl()
+
+proc read*(reader: var JsonReader, v: var uint32) =
+  ## Will parse unsigned integers.
+  uintImpl()
+
+proc read*(reader: var JsonReader, v: var uint64) =
+  ## Will parse unsigned integers.
+  uintImpl()
+
+template intImpl() =
+  # XXX clean this up later
   when nimvm:
     v = type(v)(parseBiggestInt(parseSymbol(reader)))
   else:
@@ -181,8 +201,29 @@ proc read*(reader: var JsonReader, v: var SomeSignedInt) =
       except:
         reader.error("Number type to small to contain the number.")
 
-proc read*(reader: var JsonReader, v: var SomeFloat) =
-  ## Will parse float32 and float64.
+proc read*(reader: var JsonReader, v: var int) =
+  ## Will parse signed integers.
+  intImpl()
+
+proc read*(reader: var JsonReader, v: var int8) =
+  ## Will parse signed integers.
+  intImpl()
+
+proc read*(reader: var JsonReader, v: var int16) =
+  ## Will parse signed integers.
+  intImpl()
+
+proc read*(reader: var JsonReader, v: var int32) =
+  ## Will parse signed integers.
+  intImpl()
+
+proc read*(reader: var JsonReader, v: var int64) =
+  ## Will parse signed integers.
+  intImpl()
+
+proc read*(reader: var JsonReader, v: var float) =
+  ## Will parse floats.
+  # XXX clean this up later
   eatSpace(reader)
   if reader.peekMatch('"'):
     # string, check for nim json nan and inf strings:
@@ -257,6 +298,12 @@ proc read*(reader: var JsonReader, v: var SomeFloat) =
   if chars == 0 or chars < s.len:
     reader.error("Failed to parse a float.")
   v = f
+
+proc read*(reader: var JsonReader, v: var float32) =
+  ## Will parse floats.
+  var f: float
+  read(reader, f)
+  v = float32(f)
 
 proc validRune(reader: var JsonReader, rune: var Rune, start: char): int =
   # returns number of skipped bytes

@@ -11,7 +11,7 @@ type t[T] = tuple[a: string, b: T]
 proc dump*[N, T](dumper: var JsonDumper, v: array[N, t[T]])
 proc dump*[N, T](dumper: var JsonDumper, v: array[N, T])
 proc dump*[T](dumper: var JsonDumper, v: seq[T])
-proc dump*(dumper: var JsonDumper, v: object)
+proc dump*[T: object](dumper: var JsonDumper, v: T)
 proc dump*[T: distinct](dumper: var JsonDumper, v: T) {.inline.}
 
 # don't dogfood these yet if they add to compile times:
@@ -135,7 +135,7 @@ proc dumpNumberFast(dumper: var JsonDumper, v: uint|uint8|uint16|uint32|uint64) 
     inc at
   dumper.consumeBuffer()
 
-proc dump*(dumper: var JsonDumper, v: uint|uint8|uint16|uint32|uint64) {.inline.} =
+template uintImpl() =
   when nimvm:
     dumper.dumpNumberSlow(v)
   else:
@@ -144,14 +144,44 @@ proc dump*(dumper: var JsonDumper, v: uint|uint8|uint16|uint32|uint64) {.inline.
     else:
       dumper.dumpNumberFast(v)
 
-proc dump*(dumper: var JsonDumper, v: int|int8|int16|int32|int64) {.inline.} =
+proc dump*(dumper: var JsonDumper, v: uint) {.inline.} =
+  uintImpl()
+
+proc dump*(dumper: var JsonDumper, v: uint8) {.inline.} =
+  uintImpl()
+
+proc dump*(dumper: var JsonDumper, v: uint16) {.inline.} =
+  uintImpl()
+
+proc dump*(dumper: var JsonDumper, v: uint32) {.inline.} =
+  uintImpl()
+
+proc dump*(dumper: var JsonDumper, v: uint64) {.inline.} =
+  uintImpl()
+
+template intImpl() =
   if v < 0:
     dumper.write '-'
     dump(dumper, 0.uint64 - v.uint64)
   else:
     dump(dumper, v.uint64)
 
-proc dump*(dumper: var JsonDumper, v: SomeFloat) =
+proc dump*(dumper: var JsonDumper, v: int) {.inline.} =
+  intImpl()
+
+proc dump*(dumper: var JsonDumper, v: int8) {.inline.} =
+  intImpl()
+
+proc dump*(dumper: var JsonDumper, v: int16) {.inline.} =
+  intImpl()
+
+proc dump*(dumper: var JsonDumper, v: int32) {.inline.} =
+  intImpl()
+
+proc dump*(dumper: var JsonDumper, v: int64) {.inline.} =
+  intImpl()
+
+template floatImpl() =
   #dumper.write $v # original jsony
   let cls = classify(v)
   case cls
@@ -176,6 +206,12 @@ proc dump*(dumper: var JsonDumper, v: SomeFloat) =
   else:
     dumper.artery.buffer.addFloat(v)
     dumper.consumeBuffer()
+
+proc dump*(dumper: var JsonDumper, v: float) =
+  floatImpl()
+
+proc dump*(dumper: var JsonDumper, v: float32) =
+  floatImpl()
 
 proc validRuneAt(s: string, i: int, rune: var Rune): int =
   # returns number of skipped bytes
@@ -340,7 +376,7 @@ proc dump*(dumper: var JsonDumper, v: char) =
     dumper.write v
   dumper.write '"'
 
-proc dump*(dumper: var JsonDumper, v: tuple) =
+proc dump*[T: tuple](dumper: var JsonDumper, v: T) =
   mixin dump
   dumper.write '['
   var i = 0
@@ -351,7 +387,7 @@ proc dump*(dumper: var JsonDumper, v: tuple) =
     inc i
   dumper.write ']'
 
-proc dump*(dumper: var JsonDumper, v: enum) {.inline.} =
+proc dump*[T: enum](dumper: var JsonDumper, v: T) {.inline.} =
   case dumper.options.defaultEnumOutput
   of EnumName:
     dumper.dump($v)
@@ -382,7 +418,7 @@ template dumpKey(dumper: var JsonDumper, v: static string) =
   const v2 = holo_json.toJson(v) & ":"
   dumper.write v2
 
-proc dump*(dumper: var JsonDumper, v: object) =
+proc dump*[T: object](dumper: var JsonDumper, v: T) =
   mixin dump
   dumper.write '{'
   var i = 0
@@ -434,7 +470,7 @@ proc dump*[N, T](dumper: var JsonDumper, v: array[N, t[T]]) =
     inc i
   dumper.write '}'
 
-proc dump*(dumper: var JsonDumper, v: ref) {.inline.} =
+proc dump*[T](dumper: var JsonDumper, v: ref T) {.inline.} =
   mixin dump
   if v == nil:
     dumper.write "null"
