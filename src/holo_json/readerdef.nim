@@ -138,10 +138,9 @@ proc unsafeNext*(reader: var JsonReader) {.inline.} =
 
 proc unsafeNextBy*(reader: var JsonReader, n: int) {.inline.} =
   # keep separate from next for now
-  let prevPos = reader.bufferPos
   inc reader.bufferPos, n
   if reader.options.doLineColumn:
-    for i in prevPos ..< reader.bufferPos:
+    for i in reader.bufferPos - n + 1 ..< reader.bufferPos:
       let c = reader.vein.buffer[i]
       if c == '\n' or (c == '\r' and reader.vein.buffer[i + 1] != '\n'):
         inc reader.line
