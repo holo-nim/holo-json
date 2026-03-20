@@ -108,7 +108,6 @@ proc dumpNumberSlow(dumper: var JsonDumper, v: uint|uint8|uint16|uint32|uint64) 
 proc dumpNumberFast(dumper: var JsonDumper, v: uint|uint8|uint16|uint32|uint64) =
   # Its faster to not allocate a string for a number,
   # but to write it out the digits directly.
-  # XXX can we just use addInt
   if v == 0:
     dumper.write '0'
     return
@@ -136,13 +135,17 @@ proc dumpNumberFast(dumper: var JsonDumper, v: uint|uint8|uint16|uint32|uint64) 
   dumper.consumeBuffer()
 
 template uintImpl() =
-  when nimvm:
-    dumper.dumpNumberSlow(v)
-  else:
-    when defined(js):
+  when jsonyIntOutput:
+    when nimvm:
       dumper.dumpNumberSlow(v)
     else:
-      dumper.dumpNumberFast(v)
+      when defined(js):
+        dumper.dumpNumberSlow(v)
+      else:
+        dumper.dumpNumberFast(v)
+  else:
+    dumper.artery.buffer.addInt v
+    dumper.consumeBuffer()
 
 proc dump*(dumper: var JsonDumper, v: uint) {.inline.} =
   uintImpl()
@@ -160,11 +163,15 @@ proc dump*(dumper: var JsonDumper, v: uint64) {.inline.} =
   uintImpl()
 
 template intImpl() =
-  if v < 0:
-    dumper.write '-'
-    dump(dumper, 0.uint64 - v.uint64)
+  when jsonyIntOutput:
+    if v < 0:
+      dumper.write '-'
+      dump(dumper, 0.uint64 - v.uint64)
+    else:
+      dump(dumper, v.uint64)
   else:
-    dump(dumper, v.uint64)
+    dumper.artery.buffer.addInt v
+    dumper.consumeBuffer()
 
 proc dump*(dumper: var JsonDumper, v: int) {.inline.} =
   intImpl()

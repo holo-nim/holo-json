@@ -8,11 +8,11 @@ export JsonReader, JsonReaderOptions, initJsonReader, startRead
 # XXX make sure "wrong parses" are properly dealt with, ie if it expects a integer and receives "123abc" it should not parse 123 and be done with it
 
 proc read*[T](reader: var JsonReader, v: var seq[T])
-proc read*[T: enum](reader: var JsonReader, v: var T)
+proc read*[T: enum](reader: var JsonReader, v: var T) {.inline.}
 proc read*[T: object|ref object](reader: var JsonReader, v: var T)
 proc read*[T: tuple](reader: var JsonReader, v: var T)
 proc read*[T: array](reader: var JsonReader, v: var T)
-proc read*[T: not object](reader: var JsonReader, v: var ref T)
+proc read*[T: not object](reader: var JsonReader, v: var ref T) {.inline.}
 proc read*(reader: var JsonReader, v: var JsonNode)
 proc read*(reader: var JsonReader, v: var string)
 proc read*[T: distinct](reader: var JsonReader, v: var T) {.inline.}
@@ -118,7 +118,7 @@ proc peekRawKindSkipSpace*(reader: var JsonReader): JsonNodeKind {.inline.} =
   eatSpace(reader)
   result = peekRawKind(reader)
 
-proc read*(reader: var JsonReader, v: var bool) =
+proc read*(reader: var JsonReader, v: var bool) {.inline.} =
   ## Will parse boolean true or false.
   when nimvm:
     # XXX either should be fine but test
@@ -161,23 +161,23 @@ template uintImpl() =
       reader.error("Number expected.")
     v = type(v)(v2)
 
-proc read*(reader: var JsonReader, v: var uint) =
+proc read*(reader: var JsonReader, v: var uint) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl()
 
-proc read*(reader: var JsonReader, v: var uint8) =
+proc read*(reader: var JsonReader, v: var uint8) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl()
 
-proc read*(reader: var JsonReader, v: var uint16) =
+proc read*(reader: var JsonReader, v: var uint16) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl()
 
-proc read*(reader: var JsonReader, v: var uint32) =
+proc read*(reader: var JsonReader, v: var uint32) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl()
 
-proc read*(reader: var JsonReader, v: var uint64) =
+proc read*(reader: var JsonReader, v: var uint64) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl()
 
@@ -201,23 +201,23 @@ template intImpl() =
       except:
         reader.error("Number type to small to contain the number.")
 
-proc read*(reader: var JsonReader, v: var int) =
+proc read*(reader: var JsonReader, v: var int) {.inline.} =
   ## Will parse signed integers.
   intImpl()
 
-proc read*(reader: var JsonReader, v: var int8) =
+proc read*(reader: var JsonReader, v: var int8) {.inline.} =
   ## Will parse signed integers.
   intImpl()
 
-proc read*(reader: var JsonReader, v: var int16) =
+proc read*(reader: var JsonReader, v: var int16) {.inline.} =
   ## Will parse signed integers.
   intImpl()
 
-proc read*(reader: var JsonReader, v: var int32) =
+proc read*(reader: var JsonReader, v: var int32) {.inline.} =
   ## Will parse signed integers.
   intImpl()
 
-proc read*(reader: var JsonReader, v: var int64) =
+proc read*(reader: var JsonReader, v: var int64) {.inline.} =
   ## Will parse signed integers.
   intImpl()
 
@@ -299,7 +299,7 @@ proc read*(reader: var JsonReader, v: var float) =
     reader.error("Failed to parse a float.")
   v = f
 
-proc read*(reader: var JsonReader, v: var float32) =
+proc read*(reader: var JsonReader, v: var float32) {.inline.} =
   ## Will parse floats.
   var f: float
   read(reader, f)
@@ -476,7 +476,7 @@ proc read*(reader: var JsonReader, v: var string) =
 
   eatChar(reader, '"')
 
-proc read*(reader: var JsonReader, v: var char) =
+proc read*(reader: var JsonReader, v: var char) {.inline.} =
   var str: string
   reader.read(str)
   if str.len != 1:
@@ -514,7 +514,7 @@ proc read*[T: array](reader: var JsonReader, v: var T) =
       reader.parseError("expected comma")
   eatChar(reader, ']')
 
-proc read*[T: not object](reader: var JsonReader, v: var ref T) =
+proc read*[T: not object](reader: var JsonReader, v: var ref T) {.inline.} =
   mixin read
   eatSpace(reader)
   if reader.nextMatch("null"):
@@ -661,7 +661,7 @@ proc read*[T: tuple](reader: var JsonReader, v: var T) =
       discard
   eatChar(reader, ']')
 
-proc read*[T: enum](reader: var JsonReader, v: var T) =
+proc read*[T: enum](reader: var JsonReader, v: var T) {.inline.} =
   eatSpace(reader)
   var strV: string
   if reader.peekMatch('"'):

@@ -10,6 +10,9 @@ const jsonyFieldCompatibility* {.booldefine.} = false
   ## version of the name, and to output the original name of the field.
   ## false by default, when disabled only the snake case version of the name is used for both reading and output.
 
+const jsonyIntOutput* {.booldefine.} = true
+  ## uses the jsony code for dumping ints instead of just using standard library `addInt`
+
 type
   RawJson* = distinct string
   JsonValueError* = object of ValueError
