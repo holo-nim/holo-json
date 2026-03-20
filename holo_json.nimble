@@ -1,12 +1,12 @@
 version     = "0.1.0"
 author      = "Andre von Houck -> metagn"
-description = "usable fork of jsony"
+description = "fork of jsony adapted to holo-flow"
 license     = "MIT"
 
 srcDir = "src"
 
 requires "nim >= 2.0.0"
-requires "https://github.com/metagn/hemodyne#HEAD"
+requires "https://github.com/holo-nim/holo-flow#HEAD"
 
 when (NimMajor, NimMinor) >= (1, 4):
   when (compiles do: import nimbleutils):

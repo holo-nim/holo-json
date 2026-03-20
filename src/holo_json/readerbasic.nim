@@ -1,6 +1,6 @@
 ## implements reading behavior for basic types
 
-import ./[common, readerdef], private/[objvar, fields, caseutils], hemodyne/syncvein
+import ./[common, readerdef], private/[objvar, fields, caseutils], holo_flow/reader as holo_reader
 import std/[strutils, unicode, parseutils, typetraits, macros, importutils]
 import std/json #from std/json import JsonNodeKind, JsonNode
 export JsonReader, JsonReaderOptions, initJsonReader, startRead
@@ -141,6 +141,7 @@ proc read*(reader: var JsonReader, v: var bool) {.inline.} =
 
 template uintImpl() =
   # XXX clean this up later
+  mixin reader
   when nimvm:
     v = type(v)(parseBiggestUInt(parseSymbol(reader)))
   else:
@@ -420,15 +421,15 @@ proc read*(reader: var JsonReader, v: var string) =
         let numBytes = reader.bufferPos - copyStart + 1
         when nimvm:
           for p in 0 ..< numBytes:
-            v.add reader.vein.buffer[copyStart + p]
+            v.add reader.buffer[copyStart + p]
         else:
           when defined(js) or defined(nimscript):
             for p in 0 ..< numBytes:
-              v.add reader.vein.buffer[copyStart + p]
+              v.add reader.buffer[copyStart + p]
           else:
             let vLen = v.len
             v.setLen(vLen + numBytes)
-            copyMem(v[vLen].addr, reader.vein.buffer[copyStart].unsafeAddr, numBytes)
+            copyMem(v[vLen].addr, reader.buffer[copyStart].unsafeAddr, numBytes)
       reader.unlockBuffer()
       inCopy = false
   try:
@@ -821,7 +822,7 @@ proc read*(reader: var JsonReader, v: var RawJson) {.inline.} =
   reader.lockBuffer()
   try:
     let start = skipValue(reader)
-    v = reader.vein.buffer[start .. reader.bufferPos].RawJson
+    v = reader.buffer[start .. reader.bufferPos].RawJson
   finally:
     reader.unlockBuffer()
 
