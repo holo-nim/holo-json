@@ -1,6 +1,6 @@
 ## implements dumping behavior for basic types 
 
-import ./[common, dumperdef], holo_flow/writer as holo_writer, std/[json, typetraits, unicode, tables]
+import ./[common, dumperdef], holo_flow/holo_writer, std/[json, typetraits, unicode, tables]
 import std/math # for classify
 import private/fields
 

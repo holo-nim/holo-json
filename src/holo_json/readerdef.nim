@@ -1,6 +1,6 @@
 ## defines the `JsonReader` object along with helpers to use it
 
-import ./common, holo_flow/reader, std/streams
+import ./common, holo_flow/holo_reader, std/streams
 
 type
   JsonReader* = object

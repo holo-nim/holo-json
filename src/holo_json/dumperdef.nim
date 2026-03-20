@@ -1,6 +1,6 @@
 ## defines the `JsonDumper` object along with helpers to use it
 
-import ./common, holo_flow/writer, std/streams
+import ./common, holo_flow/holo_writer, std/streams
 
 type
   JsonDumper* = object

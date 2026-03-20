@@ -1,6 +1,6 @@
 ## implements reading behavior for basic types
 
-import ./[common, readerdef], private/[objvar, fields, caseutils], holo_flow/reader as holo_reader
+import ./[common, readerdef], private/[objvar, fields, caseutils], holo_flow/holo_reader
 import std/[strutils, unicode, parseutils, typetraits, macros, importutils]
 import std/json #from std/json import JsonNodeKind, JsonNode
 export JsonReader, JsonReaderOptions, initJsonReader, startRead
@@ -141,7 +141,6 @@ proc read*(reader: var JsonReader, v: var bool) {.inline.} =
 
 template uintImpl() =
   # XXX clean this up later
-  mixin reader
   when nimvm:
     v = type(v)(parseBiggestUInt(parseSymbol(reader)))
   else:
