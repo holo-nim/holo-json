@@ -1,6 +1,6 @@
 ## implements dumping behavior for basic types 
 
-import ./[common, dumperdef], hemodyne/syncartery, std/[json, typetraits, unicode, tables]
+import ./[common, dumperdef], holo_flow/holo_writer, std/[json, typetraits, unicode, tables]
 import std/math # for classify
 import private/fields
 
@@ -123,13 +123,13 @@ proc dumpNumberFast(dumper: var JsonDumper, v: uint|uint8|uint16|uint32|uint64) 
     digits[p] = lookup[idx*2]
     inc p
     v = v div 100
-  var at = dumper.artery.buffer.len
+  var at = dumper.buffer.len
   if digits[p-1] == '0':
     dec p
-  dumper.artery.buffer.setLen(dumper.artery.buffer.len + p)
+  dumper.buffer.setLen(dumper.buffer.len + p)
   dec p
   while p >= 0:
-    dumper.artery.buffer[at] = digits[p]
+    dumper.buffer[at] = digits[p]
     dec p
     inc at
   dumper.consumeBuffer()
@@ -144,7 +144,7 @@ template uintImpl() =
       else:
         dumper.dumpNumberFast(v)
   else:
-    dumper.artery.buffer.addInt v
+    dumper.buffer.addInt v
     dumper.consumeBuffer()
 
 proc dump*(dumper: var JsonDumper, v: uint) {.inline.} =
@@ -170,7 +170,7 @@ template intImpl() =
     else:
       dump(dumper, v.uint64)
   else:
-    dumper.artery.buffer.addInt v
+    dumper.buffer.addInt v
     dumper.consumeBuffer()
 
 proc dump*(dumper: var JsonDumper, v: int) {.inline.} =
@@ -211,7 +211,7 @@ template floatImpl() =
       # copy nim json
       dumper.write "\"-inf\""
   else:
-    dumper.artery.buffer.addFloat(v)
+    dumper.buffer.addFloat(v)
     dumper.consumeBuffer()
 
 proc dump*(dumper: var JsonDumper, v: float) =
@@ -287,15 +287,15 @@ proc dump*(dumper: var JsonDumper, v: string) =
         let numBytes = i - copyStart
         when nimvm:
           for p in 0 ..< numBytes:
-            dumper.artery.buffer.add v[copyStart + p]
+            dumper.buffer.add v[copyStart + p]
         else:
           when defined(js) or defined(nimscript):
             for p in 0 ..< numBytes:
-              dumper.artery.buffer.add v[copyStart + p]
+              dumper.buffer.add v[copyStart + p]
           else:
-            let sLen = dumper.artery.buffer.len
-            dumper.artery.buffer.setLen(sLen + numBytes)
-            copyMem(dumper.artery.buffer[sLen].addr, v[copyStart].unsafeAddr, numBytes)
+            let sLen = dumper.buffer.len
+            dumper.buffer.setLen(sLen + numBytes)
+            copyMem(dumper.buffer[sLen].addr, v[copyStart].unsafeAddr, numBytes)
         dumper.consumeBuffer()
       inCopy = false
   try:

@@ -96,7 +96,7 @@ Not compatible with jsony's parsing/conversion behavior.
 
 ### Data handling
 
-* Instead of working on bare strings a "dynamic buffer" is used that can be read/written to either immediately or when it becomes available via a callback (which can read from streams etc). It also shrinks to remove data up to a position marked as read when it needs to resize, although a queue would be better for this, but strings keep compatibility. The library that does this is very immature though and it may be replaced in the future. Also the data loading is entirely sync as an async json parser would be ridiculous.
+* Instead of working on bare strings, "dynamic buffers" from [holo-flow](https://github.com/holo-nim/holo-flow) are used.
 
 * The existence of the reader/dumper objects allows for line/column handling and options for different behavior, a potential option is for pretty output but is not implemented yet.
 
