@@ -4,8 +4,7 @@ const holojsonLineColumn* {.booldefine.} = true
   ## enables/disables line column tracking by default, has very little impact on performance
 
 type
-  JsonReaderOptions* = object
-    doLineColumn*: bool = holojsonLineColumn
+  JsonReadFormat* = object
     handleUtf16*: bool = true
       ## jsony converts utf 16 characters in strings by default apparently so does stdlib json
     forceUtf8Strings*: bool
@@ -15,7 +14,7 @@ type
     # XXX comments?
   EnumOutput* = enum
     EnumName, EnumOrd
-  JsonDumperOptions* = object
+  JsonDumpFormat* = object
     keepUtf8*: bool = true
       ## keeps valid utf 8 codepoints in strings as-is instead of encoding an escape sequence
     useXEscape*: bool

@@ -1,22 +1,22 @@
 import holo_json
 
-proc dump*(s: var JsonDumper, v: object) =
+proc dump*(format: JsonDumpFormat, s: var HoloWriter, v: object) =
   s.write '{'
   var i = 0
   # Normal objects.
   for k, e in v.fieldPairs:
-    when compiles(e != nil):
+    when compiles(e != nil) and e isnot string:
       if e != nil:
         if i > 0:
           s.write ','
-        s.dump(k)
-        s.dump(e)
+        format.dump(s, k)
+        format.dump(s, e)
         inc i
     else:
       if i > 0:
         s.write ','
-      s.dump(k)
-      s.dump(e)
+      format.dump(s, k)
+      format.dump(s, e)
       inc i
   s.write '}'
 

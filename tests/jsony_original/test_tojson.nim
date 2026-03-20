@@ -68,16 +68,16 @@ type Fraction = object
   numerator: int
   denominator: int
 
-proc dump(s: var JsonDumper, v: Fraction) =
+proc dump(format: JsonDumpFormat, s: var HoloWriter, v: Fraction) =
   ## Output fraction type as a string "x/y".
-  if true:
+  if true: # `write` is exported so no need to import holo_writer
     s.write '"'
     s.write $v.numerator
     s.write '/'
     s.write $v.denominator
     s.write '"'
   else:
-    s.dump $v.numerator & '/' & $v.denominator
+    format.dump s, $v.numerator & '/' & $v.denominator
 
 var f = Fraction(numerator: 10, denominator: 13)
 doAssert f.toJson() == "\"10/13\""

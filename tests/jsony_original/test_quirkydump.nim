@@ -22,11 +22,11 @@ proc camel2snake*(s: string): string =
     else:
       result.add(s[i])
 
-template dumpKey(s: var JsonDumper, v: string) =
+template dumpKey(s: var HoloWriter, v: string) =
   const v2 = v.camel2snake().toJson() & ":"
   s.write v2
 
-proc dump*(s: var JsonDumper, v: object) =
+proc dump*(format: JsonDumpFormat, s: var HoloWriter, v: object) =
   s.write '{'
   var i = 0
   when compiles(for k, e in v.pairs: discard):
@@ -34,9 +34,9 @@ proc dump*(s: var JsonDumper, v: object) =
     for k, e in v.pairs:
       if i > 0:
         s.write ','
-      s.dump(k)
+      format.dump(s, k)
       s.write ':'
-      s.dump(e)
+      format.dump(s, e)
       inc i
   else:
     # Normal objects.
@@ -46,13 +46,13 @@ proc dump*(s: var JsonDumper, v: object) =
           if i > 0:
             s.write ','
           s.dumpKey(k)
-          s.dump(e)
+          format.dump(s, e)
           inc i
       else:
         if i > 0:
           s.write ','
         s.dumpKey(k)
-        s.dump(e)
+        format.dump(s, e)
         inc i
   s.write '}'
 
