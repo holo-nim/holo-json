@@ -193,19 +193,19 @@ template floatImpl() =
   let cls = classify(v)
   case cls
   of fcNan:
-    if dumper.options.rawJsNanInf:
+    if dumper.options.format.rawJsNanInf:
       dumper.write "NaN"
     else:
       # copy nim json
       dumper.write "\"nan\""
   of fcInf:
-    if dumper.options.rawJsNanInf:
+    if dumper.options.format.rawJsNanInf:
       dumper.write "Infinity"
     else:
       # copy nim json
       dumper.write "\"inf\""
   of fcNegInf:
-    if dumper.options.rawJsNanInf:
+    if dumper.options.format.rawJsNanInf:
       dumper.write "-Infinity"
     else:
       # copy nim json
@@ -314,13 +314,13 @@ proc dump*(dumper: var JsonDumper, v: string) =
           of '\r': dumper.write r"\r"
           of '\t': dumper.write r"\t"
           of '\v':
-            if dumper.options.useXEscape:
+            if dumper.options.format.useXEscape:
               dumper.write r"\x0b"
             else:
               dumper.write r"\u000b"
           of '"': dumper.write r"\"""
           of '\0'..'\7', '\14'..'\31':
-            if dumper.options.useXEscape:
+            if dumper.options.format.useXEscape:
               dumper.write r"\x"
             else:
               dumper.write r"\u00"
@@ -334,7 +334,7 @@ proc dump*(dumper: var JsonDumper, v: string) =
           inc i
       else: # Multi-byte characters
         var r = 0
-        if dumper.options.keepUtf8:
+        if dumper.options.format.keepUtf8:
           var rune: Rune # not used apparently
           r = v.validRuneAt(i, rune)
         if r != 0:
@@ -344,7 +344,7 @@ proc dump*(dumper: var JsonDumper, v: string) =
           finishCopy()
           when false:
             s.add Rune(0xfffd) # ??? this is just bad
-          if dumper.options.useXEscape:
+          if dumper.options.format.useXEscape:
             dumper.write r"\x"
           else:
             dumper.write r"\u00"
@@ -367,13 +367,13 @@ proc dump*(dumper: var JsonDumper, v: char) =
     of '\r': dumper.write r"\r"
     of '\t': dumper.write r"\t"
     of '\v':
-      if dumper.options.useXEscape:
+      if dumper.options.format.useXEscape:
         dumper.write r"\x0b"
       else:
         dumper.write r"\u000b"
     of '"': dumper.write r"\"""
     else:
-      if dumper.options.useXEscape:
+      if dumper.options.format.useXEscape:
         dumper.write r"\x"
       else:
         dumper.write r"\u00"
@@ -395,7 +395,7 @@ proc dump*[T: tuple](dumper: var JsonDumper, v: T) =
   dumper.write ']'
 
 proc dump*[T: enum](dumper: var JsonDumper, v: T) {.inline.} =
-  case dumper.options.defaultEnumOutput
+  case dumper.options.format.defaultEnumOutput
   of EnumName:
     dumper.dump($v)
   of EnumOrd:

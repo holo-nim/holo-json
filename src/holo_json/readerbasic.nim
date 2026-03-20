@@ -236,7 +236,7 @@ proc read*(reader: var JsonReader, v: var float) =
     else:
       reader.error("invalid float string")
     return
-  if reader.options.rawJsNanInf:
+  if reader.options.format.rawJsNanInf:
     if reader.nextMatch("NaN"):
       v = NaN
       return
@@ -372,7 +372,7 @@ proc parseUnicodeEscape(reader: var JsonReader): int =
     reader.parseError("Expected unicode escape hex but end reached.")
   for i in 1..hexStr.len: reader.unsafeNext()
   result = parseHexInt(reader, hexStr)
-  if reader.options.handleUtf16:
+  if reader.options.format.handleUtf16:
     # Deal with UTF-16 surrogates. Most of the time strings are encoded as utf8
     # but some APIs will reply with UTF-16 surrogate pairs which needs to be dealt
     # with.
@@ -434,7 +434,7 @@ proc read*(reader: var JsonReader, v: var string) =
   try:
     var c: char
     while reader.peek(c):
-      if reader.options.forceUtf8Strings and (cast[uint8](c) and 0b10000000) != 0: # Multi-byte characters
+      if reader.options.format.forceUtf8Strings and (cast[uint8](c) and 0b10000000) != 0: # Multi-byte characters
         var r: Rune
         let byteCount = reader.validRune(r, c)
         if byteCount != 0:
