@@ -1,71 +1,71 @@
 ## `dump` hooks for stdlib types
 
-import ./[dumperdef, dumperbasic], std/[options, sets, tables]
+import ./[common, dumperbasic], holo_flow/holo_writer, std/[options, sets, tables]
 
-proc dump*[T](dumper: var JsonDumper, v: Option[T]) {.inline.} =
+proc dump*[T](format: JsonOutputFormat, writer: var HoloWriter, v: Option[T]) {.inline.} =
   mixin dump
   if v.isNone:
-    dumper.write "null"
+    writer.write "null"
   else:
-    dumper.dump(v.get())
+    format.dump(writer, v.get())
 
-proc dump*[T](dumper: var JsonDumper, v: HashSet[T]) =
+proc dump*[T](format: JsonOutputFormat, writer: var HoloWriter, v: HashSet[T]) =
   mixin dump
   var arr: ArrayDump
-  dumper.withArrayDump(arr):
+  format.withArrayDump(writer, arr):
     for e in v:
-      dumper.withArrayItem(arr):
-        dumper.dump(e)
+      format.withArrayItem(writer, arr):
+        format.dump(writer, e)
 
-proc dump*[T](dumper: var JsonDumper, v: OrderedSet[T]) =
+proc dump*[T](format: JsonOutputFormat, writer: var HoloWriter, v: OrderedSet[T]) =
   mixin dump
   var arr: ArrayDump
-  dumper.withArrayDump(arr):
+  format.withArrayDump(writer, arr):
     for e in v:
-      dumper.withArrayItem(arr):
-        dumper.dump(e)
+      format.withArrayItem(writer, arr):
+        format.dump(writer, e)
 
-proc dump*[T](dumper: var JsonDumper, v: set[T]) =
+proc dump*[T](format: JsonOutputFormat, writer: var HoloWriter, v: set[T]) =
   mixin dump
   var arr: ArrayDump
-  dumper.withArrayDump(arr):
+  format.withArrayDump(writer, arr):
     for e in v:
-      dumper.withArrayItem(arr):
-        dumper.dump(e)
+      format.withArrayItem(writer, arr):
+        format.dump(writer, e)
 
-template tableImpl(dumper, tab, K, V) =
+template tableImpl(format, writer, tab, K, V) =
   mixin dump
   # not in original jsony
   when tab is ref:
     if isNil(v):
-      dumper.write "null"
+      writer.write "null"
       return
   var obj: ObjectDump
-  dumper.withObjectDump(obj):
+  format.withObjectDump(writer, obj):
     for k, v in tab:
-      dumper.withObjectField(obj, $k):
-        dumper.dump v
+      format.withObjectField(writer, obj, $k):
+        format.dump writer, v
 
-proc dump*[K: string | enum, V](dumper: var JsonDumper, tab: Table[K, V]) =
+proc dump*[K: string | enum, V](format: JsonOutputFormat, writer: var HoloWriter, tab: Table[K, V]) =
   ## Dump an object.
-  tableImpl(dumper, tab, K, V)
+  tableImpl(format, writer, tab, K, V)
 
-proc dump*[K: string | enum, V](dumper: var JsonDumper, tab: TableRef[K, V]) =
+proc dump*[K: string | enum, V](format: JsonOutputFormat, writer: var HoloWriter, tab: TableRef[K, V]) =
   ## Dump an object.
-  tableImpl(dumper, tab, K, V)
+  tableImpl(format, writer, tab, K, V)
 
-proc dump*[K: string | enum, V](dumper: var JsonDumper, tab: OrderedTable[K, V]) =
+proc dump*[K: string | enum, V](format: JsonOutputFormat, writer: var HoloWriter, tab: OrderedTable[K, V]) =
   ## Dump an object.
-  tableImpl(dumper, tab, K, V)
+  tableImpl(format, writer, tab, K, V)
 
-proc dump*[K: string | enum, V](dumper: var JsonDumper, tab: OrderedTableRef[K, V]) =
+proc dump*[K: string | enum, V](format: JsonOutputFormat, writer: var HoloWriter, tab: OrderedTableRef[K, V]) =
   ## Dump an object.
-  tableImpl(dumper, tab, K, V)
+  tableImpl(format, writer, tab, K, V)
 
-proc dump*[K: string | enum](dumper: var JsonDumper, tab: CountTable[K]) =
+proc dump*[K: string | enum](format: JsonOutputFormat, writer: var HoloWriter, tab: CountTable[K]) =
   ## Dump an object.
-  tableImpl(dumper, tab, K, int)
+  tableImpl(format, writer, tab, K, int)
 
-proc dump*[K: string | enum](dumper: var JsonDumper, tab: CountTableRef[K]) =
+proc dump*[K: string | enum](format: JsonOutputFormat, writer: var HoloWriter, tab: CountTableRef[K]) =
   ## Dump an object.
-  tableImpl(dumper, tab, K, int)
+  tableImpl(format, writer, tab, K, int)

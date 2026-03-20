@@ -7,10 +7,10 @@ type Fraction = object
   numerator: int
   denominator: int
 
-proc read(reader: var JsonReader, v: var Fraction) =
+proc read(format: JsonInputFormat, reader: var HoloReader, v: var Fraction) =
   ## Instead of looking for fraction object look for a string.
   var str: string
-  read(reader, str)
+  read(format, reader, str)
   let arr = str.split("/")
   v = Fraction()
   v.numerator = parseInt(arr[0])
@@ -21,9 +21,9 @@ doAssert frac.numerator == 1
 doAssert frac.denominator == 3
 
 when doTimes:
-  proc read(reader: var JsonReader, v: var DateTime) =
+  proc read(format: JsonInputFormat, reader: var HoloReader, v: var DateTime) =
     var str: string
-    read(reader, str)
+    read(format, reader, str)
     v = parse(str, "yyyy-MM-dd hh:mm:ss")
 
   var dt = """ "2020-01-01 00:00:00" """.fromJson(DateTime)
@@ -40,9 +40,9 @@ let data = """{
   "3": {"count":99, "filled": 99}
 }"""
 
-proc read(reader: var JsonReader, v: var seq[Entry]) =
+proc read(format: JsonInputFormat, reader: var HoloReader, v: var seq[Entry]) =
   var table: Table[string, Entry]
-  read(reader, table)
+  read(format, reader, table)
   for k, entry in table.mpairs:
     entry.id = k
     v.add(entry)
@@ -71,9 +71,9 @@ let data2 = """{
   "changes": [1, 2, "hi"]
 }"""
 
-proc read(reader: var JsonReader, v: var Entry2) =
+proc read(format: JsonInputFormat, reader: var HoloReader, v: var Entry2) =
   var entry: JsonNode
-  read(reader, entry)
+  read(format, reader, entry)
   v = Entry2()
   v.id = entry["id"].getInt()
   v.pre = entry["changes"][0].getInt()
@@ -90,17 +90,17 @@ type Header = object
   key: string
   value: string
 
-proc read(reader: var JsonReader, v: var seq[Header]) =
-  if false:
+proc read(format: JsonInputFormat, reader: var HoloReader, v: var seq[Header]) =
+  when false: # to not import holo_reader
     eatChar(reader, '{')
     while reader.hasNext():
       eatSpace(reader)
       if reader.peekMatch('}'):
         break
       var key, value: string
-      read(reader, key)
+      read(format, reader, key)
       eatChar(reader, ':')
-      read(reader, value)
+      read(format, reader, value)
       v.add(Header(key: key, value: value))
       eatSpace(reader)
       if reader.nextMatch(','):
@@ -109,9 +109,9 @@ proc read(reader: var JsonReader, v: var seq[Header]) =
         break
     eatChar(reader, '}')
   else:
-    for key in readObject(reader):
+    for key in readObject(format, reader):
       var value: string
-      read(reader, value)
+      read(format, reader, value)
       v.add(Header(key: key, value: value))
 
 

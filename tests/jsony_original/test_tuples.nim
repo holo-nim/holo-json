@@ -61,7 +61,7 @@ block:
   doAssert v.dist == 13.5
 
 type EntryForHook = tuple[id: int, name: string]
-proc finishObjectRead(reader: var JsonReader, entry: var EntryForHook) =
+proc finishObjectRead(format: JsonInputFormat, reader: var HoloReader, entry: var EntryForHook) =
   entry.id = 42
 
 block:

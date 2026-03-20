@@ -1,18 +1,18 @@
 ## implements dumping behavior for basic types 
 
-import ./[common, dumperdef], holo_flow/holo_writer, std/[json, typetraits, unicode, tables]
+import ./common, holo_flow/holo_writer, std/[json, typetraits, unicode, tables]
 import std/math # for classify
 import private/fields
 
-export JsonDumper, JsonDumperOptions, initJsonDumper, startDump, finishDump
+export HoloWriter, initHoloWriter, startWrite, finishWrite, write
 
-proc dump*(dumper: var JsonDumper, v: string)
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: string)
 type t[T] = tuple[a: string, b: T]
-proc dump*[N, T](dumper: var JsonDumper, v: array[N, t[T]])
-proc dump*[N, T](dumper: var JsonDumper, v: array[N, T])
-proc dump*[T](dumper: var JsonDumper, v: seq[T])
-proc dump*[T: object](dumper: var JsonDumper, v: T)
-proc dump*[T: distinct](dumper: var JsonDumper, v: T) {.inline.}
+proc dump*[N, T](format: JsonOutputFormat, writer: var HoloWriter, v: array[N, t[T]])
+proc dump*[N, T](format: JsonOutputFormat, writer: var HoloWriter, v: array[N, T])
+proc dump*[T](format: JsonOutputFormat, writer: var HoloWriter, v: seq[T])
+proc dump*[T: object](format: JsonOutputFormat, writer: var HoloWriter, v: T)
+proc dump*[T: distinct](format: JsonOutputFormat, writer: var HoloWriter, v: T) {.inline.}
 
 # don't dogfood these yet if they add to compile times:
 type
@@ -21,77 +21,77 @@ type
   ObjectDump* = object
     needsComma*: bool
 
-proc startArrayDump*(dumper: var JsonDumper): ArrayDump {.inline.} =
+proc startArrayDump*(format: JsonOutputFormat, writer: var HoloWriter): ArrayDump {.inline.} =
   result = ArrayDump(needsComma: false)
-  dumper.write '['
+  writer.write '['
 
-proc finishArrayDump*(dumper: var JsonDumper, arr: var ArrayDump) {.inline.} =
-  dumper.write ']'
+proc finishArrayDump*(format: JsonOutputFormat, writer: var HoloWriter, arr: var ArrayDump) {.inline.} =
+  writer.write ']'
 
-proc startArrayItem*(dumper: var JsonDumper, arr: var ArrayDump) {.inline.} =
+proc startArrayItem*(format: JsonOutputFormat, writer: var HoloWriter, arr: var ArrayDump) {.inline.} =
   if arr.needsComma:
-    dumper.write ','
+    writer.write ','
   else:
     arr.needsComma = true
 
-proc finishArrayItem*(dumper: var JsonDumper, arr: var ArrayDump) {.inline.} =
+proc finishArrayItem*(format: JsonOutputFormat, writer: var HoloWriter, arr: var ArrayDump) {.inline.} =
   discard
 
-template withArrayDump*(dumper: var JsonDumper, arr: var ArrayDump, body: typed) =
-  arr = startArrayDump(dumper)
+template withArrayDump*(format: JsonOutputFormat, writer: var HoloWriter, arr: var ArrayDump, body: typed) =
+  arr = startArrayDump(format, writer)
   body
-  finishArrayDump(dumper, arr)
+  finishArrayDump(format, writer, arr)
 
-template withArrayItem*(dumper: var JsonDumper, arr: var ArrayDump, body: typed) =
-  startArrayItem(dumper, arr)
+template withArrayItem*(format: JsonOutputFormat, writer: var HoloWriter, arr: var ArrayDump, body: typed) =
+  startArrayItem(format, writer, arr)
   body
-  finishArrayItem(dumper, arr)
+  finishArrayItem(format, writer, arr)
 
-proc startObjectDump*(dumper: var JsonDumper): ObjectDump {.inline.} =
+proc startObjectDump*(format: JsonOutputFormat, writer: var HoloWriter): ObjectDump {.inline.} =
   result = ObjectDump(needsComma: false)
-  dumper.write '{'
+  writer.write '{'
 
-proc finishObjectDump*(dumper: var JsonDumper, arr: var ObjectDump) {.inline.} =
-  dumper.write '}'
+proc finishObjectDump*(format: JsonOutputFormat, writer: var HoloWriter, arr: var ObjectDump) {.inline.} =
+  writer.write '}'
 
-proc startObjectField*(dumper: var JsonDumper, arr: var ObjectDump, name: string, raw = false) {.inline.} =
+proc startObjectField*(format: JsonOutputFormat, writer: var HoloWriter, arr: var ObjectDump, name: string, raw = false) {.inline.} =
   if arr.needsComma:
-    dumper.write ','
+    writer.write ','
   else:
     arr.needsComma = true
   if raw:
-    dumper.write name
+    writer.write name
   else:
-    dumper.dump name
-  dumper.write ':'
+    format.dump writer, name
+  writer.write ':'
 
-proc finishObjectField*(dumper: var JsonDumper, arr: var ObjectDump) {.inline.} =
+proc finishObjectField*(format: JsonOutputFormat, writer: var HoloWriter, arr: var ObjectDump) {.inline.} =
   discard
 
-template withObjectDump*(dumper: var JsonDumper, arr: var ObjectDump, body: typed) =
-  arr = startObjectDump(dumper)
+template withObjectDump*(format: JsonOutputFormat, writer: var HoloWriter, arr: var ObjectDump, body: typed) =
+  arr = startObjectDump(format, writer)
   body
-  finishObjectDump(dumper, arr)
+  finishObjectDump(format, writer, arr)
 
-template withObjectField*(dumper: var JsonDumper, arr: var ObjectDump, name: string, body: typed) =
-  startObjectField(dumper, arr, name)
+template withObjectField*(format: JsonOutputFormat, writer: var HoloWriter, arr: var ObjectDump, name: string, body: typed) =
+  startObjectField(format, writer, arr, name)
   body
-  finishObjectField(dumper, arr)
+  finishObjectField(format, writer, arr)
 
-template withRawObjectField*(dumper: var JsonDumper, arr: var ObjectDump, name: string, body: typed) =
-  startObjectField(dumper, arr, name, raw = true)
+template withRawObjectField*(format: JsonOutputFormat, writer: var HoloWriter, arr: var ObjectDump, name: string, body: typed) =
+  startObjectField(format, writer, arr, name, raw = true)
   body
-  finishObjectField(dumper, arr)
+  finishObjectField(format, writer, arr)
 
-proc dump*[T: distinct](dumper: var JsonDumper, v: T) {.inline.} =
+proc dump*[T: distinct](format: JsonOutputFormat, writer: var HoloWriter, v: T) {.inline.} =
   mixin dump
-  dumper.dump(distinctBase(T)(v))
+  format.dump(writer, distinctBase(T)(v))
 
-proc dump*(dumper: var JsonDumper, v: bool) {.inline.} =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: bool) {.inline.} =
   if v:
-    dumper.write "true"
+    writer.write "true"
   else:
-    dumper.write "false"
+    writer.write "false"
 
 const lookup = block:
   ## Generate 00, 01, 02 ... 99 pairs.
@@ -102,14 +102,14 @@ const lookup = block:
     s.add($i)
   s
 
-proc dumpNumberSlow(dumper: var JsonDumper, v: uint|uint8|uint16|uint32|uint64) {.inline.} =
-  dumper.write $v.uint64
+proc dumpNumberSlow(writer: var HoloWriter, v: uint|uint8|uint16|uint32|uint64) {.inline.} =
+  writer.write $v.uint64
 
-proc dumpNumberFast(dumper: var JsonDumper, v: uint|uint8|uint16|uint32|uint64) =
+proc dumpNumberFast(writer: var HoloWriter, v: uint|uint8|uint16|uint32|uint64) =
   # Its faster to not allocate a string for a number,
   # but to write it out the digits directly.
   if v == 0:
-    dumper.write '0'
+    writer.write '0'
     return
   # Max size of a uin64 number is 20 digits.
   var digits: array[20, char]
@@ -123,101 +123,101 @@ proc dumpNumberFast(dumper: var JsonDumper, v: uint|uint8|uint16|uint32|uint64) 
     digits[p] = lookup[idx*2]
     inc p
     v = v div 100
-  var at = dumper.buffer.len
+  var at = writer.buffer.len
   if digits[p-1] == '0':
     dec p
-  dumper.buffer.setLen(dumper.buffer.len + p)
+  writer.buffer.setLen(writer.buffer.len + p)
   dec p
   while p >= 0:
-    dumper.buffer[at] = digits[p]
+    writer.buffer[at] = digits[p]
     dec p
     inc at
-  dumper.consumeBuffer()
+  writer.consumeBuffer()
 
 template uintImpl() =
   when jsonyIntOutput:
     when nimvm:
-      dumper.dumpNumberSlow(v)
+      writer.dumpNumberSlow(v)
     else:
       when defined(js):
-        dumper.dumpNumberSlow(v)
+        writer.dumpNumberSlow(v)
       else:
-        dumper.dumpNumberFast(v)
+        writer.dumpNumberFast(v)
   else:
-    dumper.buffer.addInt v
-    dumper.consumeBuffer()
+    writer.buffer.addInt v
+    writer.consumeBuffer()
 
-proc dump*(dumper: var JsonDumper, v: uint) {.inline.} =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: uint) {.inline.} =
   uintImpl()
 
-proc dump*(dumper: var JsonDumper, v: uint8) {.inline.} =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: uint8) {.inline.} =
   uintImpl()
 
-proc dump*(dumper: var JsonDumper, v: uint16) {.inline.} =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: uint16) {.inline.} =
   uintImpl()
 
-proc dump*(dumper: var JsonDumper, v: uint32) {.inline.} =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: uint32) {.inline.} =
   uintImpl()
 
-proc dump*(dumper: var JsonDumper, v: uint64) {.inline.} =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: uint64) {.inline.} =
   uintImpl()
 
 template intImpl() =
   when jsonyIntOutput:
     if v < 0:
-      dumper.write '-'
-      dump(dumper, 0.uint64 - v.uint64)
+      writer.write '-'
+      dump(format, writer, 0.uint64 - v.uint64)
     else:
-      dump(dumper, v.uint64)
+      dump(format, writer, v.uint64)
   else:
-    dumper.buffer.addInt v
-    dumper.consumeBuffer()
+    writer.buffer.addInt v
+    writer.consumeBuffer()
 
-proc dump*(dumper: var JsonDumper, v: int) {.inline.} =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: int) {.inline.} =
   intImpl()
 
-proc dump*(dumper: var JsonDumper, v: int8) {.inline.} =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: int8) {.inline.} =
   intImpl()
 
-proc dump*(dumper: var JsonDumper, v: int16) {.inline.} =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: int16) {.inline.} =
   intImpl()
 
-proc dump*(dumper: var JsonDumper, v: int32) {.inline.} =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: int32) {.inline.} =
   intImpl()
 
-proc dump*(dumper: var JsonDumper, v: int64) {.inline.} =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: int64) {.inline.} =
   intImpl()
 
 template floatImpl() =
-  #dumper.write $v # original jsony
+  #writer.write $v # original jsony
   let cls = classify(v)
   case cls
   of fcNan:
-    if dumper.options.format.rawJsNanInf:
-      dumper.write "NaN"
+    if format.rawJsNanInf:
+      writer.write "NaN"
     else:
       # copy nim json
-      dumper.write "\"nan\""
+      writer.write "\"nan\""
   of fcInf:
-    if dumper.options.format.rawJsNanInf:
-      dumper.write "Infinity"
+    if format.rawJsNanInf:
+      writer.write "Infinity"
     else:
       # copy nim json
-      dumper.write "\"inf\""
+      writer.write "\"inf\""
   of fcNegInf:
-    if dumper.options.format.rawJsNanInf:
-      dumper.write "-Infinity"
+    if format.rawJsNanInf:
+      writer.write "-Infinity"
     else:
       # copy nim json
-      dumper.write "\"-inf\""
+      writer.write "\"-inf\""
   else:
-    dumper.buffer.addFloat(v)
-    dumper.consumeBuffer()
+    writer.buffer.addFloat(v)
+    writer.consumeBuffer()
 
-proc dump*(dumper: var JsonDumper, v: float) =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: float) =
   floatImpl()
 
-proc dump*(dumper: var JsonDumper, v: float32) =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: float32) =
   floatImpl()
 
 proc validRuneAt(s: string, i: int, rune: var Rune): int =
@@ -270,8 +270,8 @@ const hex = [
   '0', '1', '2', '3', '4', '5', '6', '7',
   '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 
-proc dump*(dumper: var JsonDumper, v: string) =
-  dumper.write '"'
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: string) =
+  writer.write '"'
 
   var
     i = 0
@@ -287,16 +287,16 @@ proc dump*(dumper: var JsonDumper, v: string) =
         let numBytes = i - copyStart
         when nimvm:
           for p in 0 ..< numBytes:
-            dumper.buffer.add v[copyStart + p]
+            writer.buffer.add v[copyStart + p]
         else:
           when defined(js) or defined(nimscript):
             for p in 0 ..< numBytes:
-              dumper.buffer.add v[copyStart + p]
+              writer.buffer.add v[copyStart + p]
           else:
-            let sLen = dumper.buffer.len
-            dumper.buffer.setLen(sLen + numBytes)
-            copyMem(dumper.buffer[sLen].addr, v[copyStart].unsafeAddr, numBytes)
-        dumper.consumeBuffer()
+            let sLen = writer.buffer.len
+            writer.buffer.setLen(sLen + numBytes)
+            copyMem(writer.buffer[sLen].addr, v[copyStart].unsafeAddr, numBytes)
+        writer.consumeBuffer()
       inCopy = false
   try:
     while i < v.len:
@@ -307,25 +307,25 @@ proc dump*(dumper: var JsonDumper, v: string) =
         if c < 32.char or c == '\\' or c == '"':
           finishCopy()
           case c:
-          of '\\': dumper.write r"\\"
-          of '\b': dumper.write r"\b"
-          of '\f': dumper.write r"\f"
-          of '\n': dumper.write r"\n"
-          of '\r': dumper.write r"\r"
-          of '\t': dumper.write r"\t"
+          of '\\': writer.write r"\\"
+          of '\b': writer.write r"\b"
+          of '\f': writer.write r"\f"
+          of '\n': writer.write r"\n"
+          of '\r': writer.write r"\r"
+          of '\t': writer.write r"\t"
           of '\v':
-            if dumper.options.format.useXEscape:
-              dumper.write r"\x0b"
+            if format.useXEscape:
+              writer.write r"\x0b"
             else:
-              dumper.write r"\u000b"
-          of '"': dumper.write r"\"""
+              writer.write r"\u000b"
+          of '"': writer.write r"\"""
           of '\0'..'\7', '\14'..'\31':
-            if dumper.options.format.useXEscape:
-              dumper.write r"\x"
+            if format.useXEscape:
+              writer.write r"\x"
             else:
-              dumper.write r"\u00"
-            dumper.write hex[c.int shr 4]
-            dumper.write hex[c.int and 0xf]
+              writer.write r"\u00"
+            writer.write hex[c.int shr 4]
+            writer.write hex[c.int and 0xf]
           else:
             discard # Not possible
           inc i
@@ -334,7 +334,7 @@ proc dump*(dumper: var JsonDumper, v: string) =
           inc i
       else: # Multi-byte characters
         var r = 0
-        if dumper.options.format.keepUtf8:
+        if format.keepUtf8:
           var rune: Rune # not used apparently
           r = v.validRuneAt(i, rune)
         if r != 0:
@@ -344,100 +344,100 @@ proc dump*(dumper: var JsonDumper, v: string) =
           finishCopy()
           when false:
             s.add Rune(0xfffd) # ??? this is just bad
-          if dumper.options.format.useXEscape:
-            dumper.write r"\x"
+          if format.useXEscape:
+            writer.write r"\x"
           else:
-            dumper.write r"\u00"
-          dumper.write hex[c.int shr 4]
-          dumper.write hex[c.int and 0xf]
+            writer.write r"\u00"
+          writer.write hex[c.int shr 4]
+          writer.write hex[c.int and 0xf]
           inc i
   finally:
     finishCopy()
 
-  dumper.write '"'
+  writer.write '"'
 
-proc dump*(dumper: var JsonDumper, v: char) =
-  dumper.write '"'
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: char) =
+  writer.write '"'
   if v < 32.char or v > 127.char or v == '\\' or v == '"':
     case v
-    of '\\': dumper.write r"\\"
-    of '\b': dumper.write r"\b"
-    of '\f': dumper.write r"\f"
-    of '\n': dumper.write r"\n"
-    of '\r': dumper.write r"\r"
-    of '\t': dumper.write r"\t"
+    of '\\': writer.write r"\\"
+    of '\b': writer.write r"\b"
+    of '\f': writer.write r"\f"
+    of '\n': writer.write r"\n"
+    of '\r': writer.write r"\r"
+    of '\t': writer.write r"\t"
     of '\v':
-      if dumper.options.format.useXEscape:
-        dumper.write r"\x0b"
+      if format.useXEscape:
+        writer.write r"\x0b"
       else:
-        dumper.write r"\u000b"
-    of '"': dumper.write r"\"""
+        writer.write r"\u000b"
+    of '"': writer.write r"\"""
     else:
-      if dumper.options.format.useXEscape:
-        dumper.write r"\x"
+      if format.useXEscape:
+        writer.write r"\x"
       else:
-        dumper.write r"\u00"
-      dumper.write hex[v.int shr 4]
-      dumper.write hex[v.int and 0xf]
+        writer.write r"\u00"
+      writer.write hex[v.int shr 4]
+      writer.write hex[v.int and 0xf]
   else:
-    dumper.write v
-  dumper.write '"'
+    writer.write v
+  writer.write '"'
 
-proc dump*[T: tuple](dumper: var JsonDumper, v: T) =
+proc dump*[T: tuple](format: JsonOutputFormat, writer: var HoloWriter, v: T) =
   mixin dump
-  dumper.write '['
+  writer.write '['
   var i = 0
   for _, e in v.fieldPairs:
     if i > 0:
-      dumper.write ','
-    dumper.dump(e)
+      writer.write ','
+    format.dump(writer, e)
     inc i
-  dumper.write ']'
+  writer.write ']'
 
-proc dump*[T: enum](dumper: var JsonDumper, v: T) {.inline.} =
-  case dumper.options.format.defaultEnumOutput
+proc dump*[T: enum](format: JsonOutputFormat, writer: var HoloWriter, v: T) {.inline.} =
+  case format.defaultEnumOutput
   of EnumName:
-    dumper.dump($v)
+    format.dump(writer, $v)
   of EnumOrd:
-    dumper.dump(ord(v))
+    format.dump(writer, ord(v))
 
-proc dump*[N, T](dumper: var JsonDumper, v: array[N, T]) =
+proc dump*[N, T](format: JsonOutputFormat, writer: var HoloWriter, v: array[N, T]) =
   mixin dump
-  dumper.write '['
+  writer.write '['
   var i = 0
   for e in v:
     if i != 0:
-      dumper.write ','
-    dumper.dump(e)
+      writer.write ','
+    format.dump(writer, e)
     inc i
-  dumper.write ']'
+  writer.write ']'
 
-proc dump*[T](dumper: var JsonDumper, v: seq[T]) =
+proc dump*[T](format: JsonOutputFormat, writer: var HoloWriter, v: seq[T]) =
   mixin dump
-  dumper.write '['
+  writer.write '['
   for i, e in v:
     if i != 0:
-      dumper.write ','
-    dumper.dump(e)
-  dumper.write ']'
+      writer.write ','
+    format.dump(writer, e)
+  writer.write ']'
 
-template dumpKey(dumper: var JsonDumper, v: static string) =
+template dumpKey(writer: var HoloWriter, v: static string) =
   const v2 = holo_json.toJson(v) & ":"
-  dumper.write v2
+  writer.write v2
 
-proc dump*[T: object](dumper: var JsonDumper, v: T) =
+proc dump*[T: object](format: JsonOutputFormat, writer: var HoloWriter, v: T) =
   mixin dump
-  dumper.write '{'
+  writer.write '{'
   var i = 0
   when false and compiles(for k, e in v.pairs: discard):
     # XXX disabled, arbitrary keys dont work
     # Tables and table like objects.
     for k, e in v.pairs:
       if i > 0:
-        dumper.write ','
-      dumper.dump(k)
-      dumper.write ':'
-      dumper.dump(e)
+        writer.write ','
+      format.dump(writer, k)
+      writer.write ':'
+      format.dump(writer, e)
       inc i
   else:
     # Normal objects.
@@ -448,91 +448,97 @@ proc dump*[T: object](dumper: var JsonDumper, v: T) =
           discard
         else:
           if i > 0:
-            dumper.write ','
-          dumper.dumpKey(k)
-          dumper.dump(e)
+            writer.write ','
+          writer.dumpKey(k)
+          format.dump(writer, e)
           inc i
       else:
         const options = fieldOptions.getOrDefault(k)
         when not options.ignoreDump:
           if i > 0:
-            dumper.write ','
+            writer.write ','
           # rename hook not in original jsony
-          dumper.dumpKey(getDumpName(k, options))
-          dumper.dump(e)
+          writer.dumpKey(getDumpName(k, options))
+          format.dump(writer, e)
           inc i
-  dumper.write '}'
+  writer.write '}'
 
-proc dump*[N, T](dumper: var JsonDumper, v: array[N, t[T]]) =
+proc dump*[N, T](format: JsonOutputFormat, writer: var HoloWriter, v: array[N, t[T]]) =
   mixin dump
-  dumper.write '{'
+  writer.write '{'
   var i = 0
   # Normal objects.
   for (k, e) in v:
     if i > 0:
-      dumper.write ','
-    dumper.dump(k)
-    dumper.write ':'
-    dumper.dump(e)
+      writer.write ','
+    format.dump(writer, k)
+    writer.write ':'
+    format.dump(writer, e)
     inc i
-  dumper.write '}'
+  writer.write '}'
 
-proc dump*[T](dumper: var JsonDumper, v: ref T) {.inline.} =
+proc dump*[T](format: JsonOutputFormat, writer: var HoloWriter, v: ref T) {.inline.} =
   mixin dump
   if v == nil:
-    dumper.write "null"
+    writer.write "null"
   else:
-    dumper.dump(v[])
+    format.dump(writer, v[])
 
-proc dump*(dumper: var JsonDumper, v: JsonNode) =
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: JsonNode) =
   ## Dumps a regular json node.
   if v == nil:
-    dumper.write "null"
+    writer.write "null"
   else:
     case v.kind:
     of JObject:
-      dumper.write '{'
+      writer.write '{'
       var i = 0
       for k, e in v.pairs:
         if i != 0:
-          dumper.write ","
-        dumper.dump(k)
-        dumper.write ':'
-        dumper.dump(e)
+          writer.write ","
+        format.dump(writer, k)
+        writer.write ':'
+        format.dump(writer, e)
         inc i
-      dumper.write '}'
+      writer.write '}'
     of JArray:
-      dumper.write '['
+      writer.write '['
       var i = 0
       for e in v:
         if i != 0:
-          dumper.write ","
-        dumper.dump(e)
+          writer.write ","
+        format.dump(writer, e)
         inc i
-      dumper.write ']'
+      writer.write ']'
     of JNull:
-      dumper.write "null"
+      writer.write "null"
     of JInt:
-      dumper.dump(v.getInt)
+      format.dump(writer, v.getInt)
     of JFloat:
-      dumper.dump(v.getFloat)
+      format.dump(writer, v.getFloat)
     of JString:
-      dumper.dump(v.getStr)
+      format.dump(writer, v.getStr)
     of JBool:
-      dumper.dump(v.getBool)
+      format.dump(writer, v.getBool)
 
-proc dump*(dumper: var JsonDumper, v: RawJson) {.inline.} =
-  dumper.write v.string
+proc dump*(format: JsonOutputFormat, writer: var HoloWriter, v: RawJson) {.inline.} =
+  writer.write v.string
 
-proc dump*[T](s: var string, v: T) {.inline.} =
+proc dump*[T](format: JsonOutputFormat, s: var string, v: T) {.inline.} =
   mixin dump
-  var dumper = initJsonDumper()
-  dumper.startDump()
-  dumper.dump(v)
-  s = dumper.finishDump()
+  var writer = initHoloWriter()
+  writer.startWrite()
+  dump(format, writer, v)
+  s = writer.finishWrite()
+
+proc dumpJson*[T](writer: var HoloWriter, v: T) {.inline.} =
+  dump(JsonOutputFormat(), writer, v)
+
+proc dumpJson*[T](s: var string, v: T) {.inline.} =
+  dump(JsonOutputFormat(), s, v)
 
 proc toJson*[T](v: T): string {.inline.} =
-  dump(result, v)
+  dump(JsonOutputFormat(), result, v)
 
 template toStaticJson*(v: untyped): static[string] =
   ## This will turn v into json at compile time and return the json string.

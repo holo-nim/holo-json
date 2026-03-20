@@ -1,2 +1,2 @@
-import readerdef, readerbasic, readerstdlib
-export readerdef, readerbasic, readerstdlib
+import readerbasic, readerstdlib
+export readerbasic, readerstdlib

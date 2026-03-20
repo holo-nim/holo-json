@@ -22,11 +22,11 @@ block:
       keep holo_json.fromJson(jsonStr, string)
 
   timeIt "holo_json no line column", 100:
-    var reader = initJsonReader(JsonReaderOptions(doLineColumn: false))
+    var reader = initHoloReader(doLineColumn = false)
     for i in 0 ..< 1000:
       reader.startRead(jsonStr)
       var s: string
-      holo_json.read(reader, s)
+      holo_json.readJson(reader, s)
       keep s
 
   when status:
@@ -52,11 +52,11 @@ block:
       keep holo_json.fromJson(jsonStr, Node)
 
   timeIt "holo_json no line column", 100:
-    var reader = initJsonReader(JsonReaderOptions(doLineColumn: false))
+    var reader = initHoloReader(doLineColumn = false)
     for i in 0 ..< 1000:
       reader.startRead(jsonStr)
       var s: Node
-      holo_json.read(reader, s)
+      holo_json.readJson(reader, s)
       keep s
 
   when status:
@@ -82,10 +82,10 @@ block:
     keep holo_json.fromJson(jsonStr, seq[Node])
 
   timeIt "holo_json no line column", 100:
-    var reader = initJsonReader(JsonReaderOptions(doLineColumn: false))
+    var reader = initHoloReader(doLineColumn = false)
     reader.startRead(jsonStr)
     var s: seq[Node]
-    holo_json.read(reader, s)
+    holo_json.readJson(reader, s)
     keep s
 
   when status:
@@ -108,12 +108,12 @@ block:
     for i in 0 ..< 1000:
       keep holo_json.toJson(number42)
 
-  timeIt "holo_json dumper", 100:
-    var dumper = initJsonDumper()
+  timeIt "holo_json writer", 100:
+    var writer = initHoloWriter()
     for i in 0 ..< 1000:
-      dumper.startDump()
-      dumper.dump(number42)
-      keep finishDump(dumper)
+      writer.startWrite()
+      writer.dumpJson(number42)
+      keep finishWrite(writer)
 
   timeIt "disruptek/jason", 100:
     for i in 0 ..< 1000:
@@ -140,12 +140,12 @@ block:
     for i in 0 ..< 1000:
       keep holo_json.toJson(hello)
 
-  timeIt "holo_json dumper", 100:
-    var dumper = initJsonDumper()
+  timeIt "holo_json writer", 100:
+    var writer = initHoloWriter()
     for i in 0 ..< 1000:
-      dumper.startDump()
-      dumper.dump(hello)
-      keep finishDump(dumper)
+      writer.startWrite()
+      writer.dumpJson(hello)
+      keep finishWrite(writer)
 
   timeIt "disruptek/jason", 100:
     for i in 0 ..< 1000:

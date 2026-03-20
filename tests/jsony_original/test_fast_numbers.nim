@@ -2,19 +2,19 @@ import holo_json
 
 doAssertRaises CatchableError:
   var
-    reader = initJsonReader()
+    reader = initHoloReader()
     n: uint64
-  read(reader, n)
+  readJson(reader, n)
 
 for i in 0 .. 10000:
   var s = ""
-  dump(s, i)
+  dumpJson(s, i)
   doAssert $i == s
 
 for i in 0 .. 10000:
   var s = $i
-  var reader = initJsonReader()
+  var reader = initHoloReader()
   reader.startRead(s)
   var v: int
-  read(reader, v)
+  readJson(reader, v)
   doAssert i == v
