@@ -26,7 +26,7 @@ template dumpKey(s: var HoloWriter, v: string) =
   const v2 = v.camel2snake().toJson() & ":"
   s.write v2
 
-proc dump*(format: JsonOutputFormat, s: var HoloWriter, v: object) =
+proc dump*(format: JsonDumpFormat, s: var HoloWriter, v: object) =
   s.write '{'
   var i = 0
   when compiles(for k, e in v.pairs: discard):

@@ -50,7 +50,7 @@ type
     id: string
     bar: Bar4
 
-proc startObjectRead(format: JsonInputFormat, reader: var HoloReader, foo: var Foo4) =
+proc startObjectRead(format: JsonReadFormat, reader: var HoloReader, foo: var Foo4) =
   foo = Foo4()
   foo.visible = "yes"
 
@@ -67,7 +67,7 @@ type
   Foo5 = object
     visible: string
     id: string
-proc startObjectRead(format: JsonInputFormat, reader: var HoloReader, foo: var Foo5) =
+proc startObjectRead(format: JsonReadFormat, reader: var HoloReader, foo: var Foo5) =
   foo.visible = "yes"
 
 block:
@@ -147,11 +147,11 @@ type
     color: string
   Nullable[T] = object
     inner: T
-proc read*[T](format: JsonInputFormat, reader: var HoloReader, v: var Nullable[T]) =
+proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var Nullable[T]) =
   if reader.nextMatch("null"):
     return
   read(format, reader, v.inner)
-proc dump*[T](format: JsonOutputFormat, writer: var HoloWriter, v: Nullable[T]) =
+proc dump*[T](format: JsonDumpFormat, writer: var HoloWriter, v: Nullable[T]) =
   if v.inner == default(T):
     writer.write "null"
     return
@@ -173,7 +173,7 @@ type Sizer = object
   size: int
   originalSize: int
 
-proc finishObjectRead(format: JsonInputFormat, reader: var HoloReader, v: var Sizer) =
+proc finishObjectRead(format: JsonReadFormat, reader: var HoloReader, v: var Sizer) =
   v.originalSize = v.size
 
 var sizer = """{"size":10}""".fromJson(Sizer)

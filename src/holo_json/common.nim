@@ -4,20 +4,17 @@ const holojsonLineColumn* {.booldefine.} = true
   ## enables/disables line column tracking by default, has very little impact on performance
 
 type
-  JsonInputFormat* = object
+  JsonReadFormat* = object
     handleUtf16*: bool = true
       ## jsony converts utf 16 characters in strings by default apparently so does stdlib json
     forceUtf8Strings*: bool
       ## jsony errors if binary data in strings is not utf8, this is now opt in
     rawJsNanInf*: bool
       ## parses raw NaN/Infinity/-Infinity as in js and json5
-  JsonReaderOptions* = object
-    doLineColumn*: bool = holojsonLineColumn
-    format*: JsonInputFormat
     # XXX comments?
   EnumOutput* = enum
     EnumName, EnumOrd
-  JsonOutputFormat* = object
+  JsonDumpFormat* = object
     keepUtf8*: bool = true
       ## keeps valid utf 8 codepoints in strings as-is instead of encoding an escape sequence
     useXEscape*: bool
@@ -26,8 +23,6 @@ type
       ## produces raw NaN/Infinity/-Infinity as in js and json5, as opposed to strings as in nim json
     defaultEnumOutput*: EnumOutput
     # XXX maybe pretty mode
-  JsonDumperOptions* = object
-    format*: JsonOutputFormat
 
 const jsonyHookCompatibility* {.booldefine.} = true
   ## allows compatibility with `renameHook` and `skipHook` which have been replaced with pragmas,

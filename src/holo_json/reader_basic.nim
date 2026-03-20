@@ -16,15 +16,15 @@ proc parseError*(reader: var HoloReader, msg: string) {.inline.} =
   ## Shortcut to raise an exception.
   raise newException(JsonParseError, "(" & $reader.line & ", " & $reader.column & ") " & msg)
 
-proc read*[T](format: JsonInputFormat, reader: var HoloReader, v: var seq[T])
-proc read*[T: enum](format: JsonInputFormat, reader: var HoloReader, v: var T) {.inline.}
-proc read*[T: object|ref object](format: JsonInputFormat, reader: var HoloReader, v: var T)
-proc read*[T: tuple](format: JsonInputFormat, reader: var HoloReader, v: var T)
-proc read*[T: array](format: JsonInputFormat, reader: var HoloReader, v: var T)
-proc read*[T: not object](format: JsonInputFormat, reader: var HoloReader, v: var ref T) {.inline.}
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var JsonNode)
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var string)
-proc read*[T: distinct](format: JsonInputFormat, reader: var HoloReader, v: var T) {.inline.}
+proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var seq[T])
+proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.}
+proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader, v: var T)
+proc read*[T: tuple](format: JsonReadFormat, reader: var HoloReader, v: var T)
+proc read*[T: array](format: JsonReadFormat, reader: var HoloReader, v: var T)
+proc read*[T: not object](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.inline.}
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode)
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string)
+proc read*[T: distinct](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.}
 
 template eatSpace*(reader: var HoloReader) =
   ## Will consume whitespace.
@@ -55,7 +55,7 @@ proc parseSymbol*(reader: var HoloReader): string =
     else:
       result.add c
 
-iterator readObjectFields*(format: JsonInputFormat, reader: var HoloReader): string =
+iterator readObjectFields*(format: JsonReadFormat, reader: var HoloReader): string =
   while reader.hasNext():
     eatSpace(reader)
     if reader.peekMatch('}'):
@@ -68,13 +68,13 @@ iterator readObjectFields*(format: JsonInputFormat, reader: var HoloReader): str
     if reader.nextMatch(','):
       discard
 
-iterator readObject*(format: JsonInputFormat, reader: var HoloReader): string =
+iterator readObject*(format: JsonReadFormat, reader: var HoloReader): string =
   eatChar(reader, '{')
   for name in readObjectFields(format, reader):
     yield name
   eatChar(reader, '}')
 
-iterator readArrayItems*(format: JsonInputFormat, reader: var HoloReader, start = 0): int =
+iterator readArrayItems*(format: JsonReadFormat, reader: var HoloReader, start = 0): int =
   var i = start
   while reader.hasNext():
     eatSpace(reader)
@@ -91,13 +91,13 @@ iterator readArrayItems*(format: JsonInputFormat, reader: var HoloReader, start 
       reader.parseError("expected comma")
     inc i
 
-iterator readArray*(format: JsonInputFormat, reader: var HoloReader): int =
+iterator readArray*(format: JsonReadFormat, reader: var HoloReader): int =
   eatChar(reader, '[')
   for i in readArrayItems(format, reader):
     yield i
   eatChar(reader, ']')
 
-proc peekRawKind*(format: JsonInputFormat, reader: var HoloReader): JsonNodeKind =
+proc peekRawKind*(format: JsonReadFormat, reader: var HoloReader): JsonNodeKind =
   ## guesses which kind the next object is, assumes spaces are skipped
   ## not guaranteed to be accurate, all numbers are assumed float
   let start = reader.peekOrZero()
@@ -121,13 +121,13 @@ proc peekRawKind*(format: JsonInputFormat, reader: var HoloReader): JsonNodeKind
       msg.addQuoted(start)
       reader.parseError(msg)
 
-proc peekRawKindSkipSpace*(format: JsonInputFormat, reader: var HoloReader): JsonNodeKind {.inline.} =
+proc peekRawKindSkipSpace*(format: JsonReadFormat, reader: var HoloReader): JsonNodeKind {.inline.} =
   ## guesses which kind the next object is, skips spaces
   ## not guaranteed to be accurate, all numbers are assumed float
   eatSpace(reader)
   result = peekRawKind(format, reader)
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var bool) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var bool) {.inline.} =
   ## Will parse boolean true or false.
   when nimvm:
     # XXX either should be fine but test
@@ -170,23 +170,23 @@ template uintImpl() =
       reader.error("Number expected.")
     v = type(v)(v2)
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var uint) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var uint) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl()
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var uint8) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var uint8) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl()
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var uint16) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var uint16) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl()
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var uint32) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var uint32) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl()
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var uint64) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var uint64) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl()
 
@@ -210,27 +210,27 @@ template intImpl() =
       except:
         reader.error("Number type to small to contain the number.")
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var int) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var int) {.inline.} =
   ## Will parse signed integers.
   intImpl()
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var int8) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var int8) {.inline.} =
   ## Will parse signed integers.
   intImpl()
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var int16) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var int16) {.inline.} =
   ## Will parse signed integers.
   intImpl()
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var int32) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var int32) {.inline.} =
   ## Will parse signed integers.
   intImpl()
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var int64) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var int64) {.inline.} =
   ## Will parse signed integers.
   intImpl()
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var float) =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var float) =
   ## Will parse floats.
   # XXX clean this up later
   eatSpace(reader)
@@ -308,7 +308,7 @@ proc read*(format: JsonInputFormat, reader: var HoloReader, v: var float) =
     reader.error("Failed to parse a float.")
   v = f
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var float32) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var float32) {.inline.} =
   ## Will parse floats.
   var f: float
   read(format, reader, f)
@@ -374,7 +374,7 @@ proc parseHexInt[I](reader: var HoloReader, a: array[I, char]): int {.inline.} =
     of 'a'..'f': result = (result shl 4) or (10 + c.int - 'a'.int)
     else: reader.parseError("expected hex char in escape sequence, got " & $c)
 
-proc parseUnicodeEscape(format: JsonInputFormat, reader: var HoloReader): int =
+proc parseUnicodeEscape(format: JsonReadFormat, reader: var HoloReader): int =
   #reader.unsafeNext() # u already skipped
   var hexStr: array[4, char]
   if not reader.peek(hexStr):
@@ -405,7 +405,7 @@ proc parseByte(reader: var HoloReader): byte =
   reader.unsafeNextBy(hexStr.len)
   result = parseHexInt(reader, hexStr).byte
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var string) =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
   ## Parse string.
   eatSpace(reader)
   if false:
@@ -485,14 +485,14 @@ proc read*(format: JsonInputFormat, reader: var HoloReader, v: var string) =
 
   eatChar(reader, '"')
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var char) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var char) {.inline.} =
   var str: string
   format.read(reader, str)
   if str.len != 1:
     reader.error("String can't fit into a char.")
   v = str[0]
 
-proc read*[T](format: JsonInputFormat, reader: var HoloReader, v: var seq[T]) =
+proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var seq[T]) =
   ## Parse seq.
   mixin read
   for i in readArray(format, reader):
@@ -500,7 +500,7 @@ proc read*[T](format: JsonInputFormat, reader: var HoloReader, v: var seq[T]) =
     read(format, reader, element)
     v.add element
 
-proc read*[T: array](format: JsonInputFormat, reader: var HoloReader, v: var T) =
+proc read*[T: array](format: JsonReadFormat, reader: var HoloReader, v: var T) =
   mixin read
   eatSpace(reader)
   eatChar(reader, '[')
@@ -523,7 +523,7 @@ proc read*[T: array](format: JsonInputFormat, reader: var HoloReader, v: var T) 
       reader.parseError("expected comma")
   eatChar(reader, ']')
 
-proc read*[T: not object](format: JsonInputFormat, reader: var HoloReader, v: var ref T) {.inline.} =
+proc read*[T: not object](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.inline.} =
   mixin read
   eatSpace(reader)
   if reader.nextMatch("null"):
@@ -532,7 +532,7 @@ proc read*[T: not object](format: JsonInputFormat, reader: var HoloReader, v: va
   new(v)
   read(format, reader, v[])
 
-proc skipValue*(format: JsonInputFormat, reader: var HoloReader): int =
+proc skipValue*(format: JsonReadFormat, reader: var HoloReader): int =
   ## Used to skip values of extra fields.
   ## returns start position in buffer
   result = -1
@@ -616,11 +616,11 @@ macro genRenameCase(fields: static openArray[(string, FieldJsonOptions)], key: s
     result.add newTree(nnkElse, quote do:
       discard skipValue(format, reader))
 
-proc finishObjectRead*[T](format: JsonInputFormat, reader: var HoloReader, v: var T) {.inline.} =
+proc finishObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   ## hook called into when an object/ref object/named tuple has finished reading all fields
   discard
 
-proc parseObjectInner[T](format: JsonInputFormat, reader: var HoloReader, v: var T) {.inline.} =
+proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   mixin read
   privateAccess(T) # important
   while reader.hasNext():
@@ -653,7 +653,7 @@ proc parseObjectInner[T](format: JsonInputFormat, reader: var HoloReader, v: var
   mixin finishObjectRead
   finishObjectRead(format, reader, v)
 
-proc read*[T: tuple](format: JsonInputFormat, reader: var HoloReader, v: var T) =
+proc read*[T: tuple](format: JsonReadFormat, reader: var HoloReader, v: var T) =
   mixin read
   eatSpace(reader)
   when T.isNamedTuple():
@@ -670,7 +670,7 @@ proc read*[T: tuple](format: JsonInputFormat, reader: var HoloReader, v: var T) 
       discard
   eatChar(reader, ']')
 
-proc read*[T: enum](format: JsonInputFormat, reader: var HoloReader, v: var T) {.inline.} =
+proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   eatSpace(reader)
   var strV: string
   if reader.peekMatch('"'):
@@ -690,7 +690,7 @@ proc read*[T: enum](format: JsonInputFormat, reader: var HoloReader, v: var T) {
     except:
       reader.error("Can't parse enum.")
 
-proc startObjectRead*[T](format: JsonInputFormat, reader: var HoloReader, v: var T) {.inline.} =
+proc startObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   ## hook called into when an object/ref object/named tuple are about to read their fields
   discard
 
@@ -737,7 +737,7 @@ macro genDiscrimCase(fields: static openArray[(string, FieldJsonOptions)], key: 
     result = newTree(nnkDiscardStmt, newEmptyNode())
     error("could not find discriminator field " & discrim & " in object type somehow", v)
 
-proc read*[T: object|ref object](format: JsonInputFormat, reader: var HoloReader, v: var T) =
+proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader, v: var T) =
   ## Parse an object or ref object.
   privateAccess(T) # important
   mixin read
@@ -784,11 +784,11 @@ proc read*[T: object|ref object](format: JsonInputFormat, reader: var HoloReader
   parseObjectInner(format, reader, v)
   eatChar(reader, '}')
 
-proc read*[T: distinct](format: JsonInputFormat, reader: var HoloReader, v: var T) {.inline.} =
+proc read*[T: distinct](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   mixin read
   read(format, reader, distinctBase(T)(v))
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var JsonNode) =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode) =
   ## Parses a regular json node.
   eatSpace(reader)
   if reader.peekMatch('{'):
@@ -826,7 +826,7 @@ proc read*(format: JsonInputFormat, reader: var HoloReader, v: var JsonNode) =
     else:
       reader.error("Unexpected.")
 
-proc read*(format: JsonInputFormat, reader: var HoloReader, v: var RawJson) {.inline.} =
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var RawJson) {.inline.} =
   reader.lockBuffer()
   try:
     let start = skipValue(format, reader)
@@ -835,13 +835,13 @@ proc read*(format: JsonInputFormat, reader: var HoloReader, v: var RawJson) {.in
     reader.unlockBuffer()
 
 proc readJson*[T](reader: var HoloReader, v: var T) {.inline.} =
-  read(JsonInputFormat(), reader, v)
+  read(JsonReadFormat(), reader, v)
 
 proc fromJson*[T](s: string, x: typedesc[T]): T {.inline.} =
   ## Takes json and outputs the object it represents.
   ## * Extra json fields are ignored.
   ## * Missing json fields keep their default values.
-  ## * `proc startObjectRead(format: JsonInputFormat, reader: var HoloReader, foo: var ...)` Can be used to populate default values.
+  ## * `proc startObjectRead(format: JsonReadFormat, reader: var HoloReader, foo: var ...)` Can be used to populate default values.
   mixin read
   result = default(T)
   var reader = initHoloReader()

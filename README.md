@@ -10,13 +10,17 @@ Not compatible with jsony's parsing/conversion behavior.
 
 ### Structure
 
-* Instead of using a `string, var int` pair in read hooks, a `var JsonReader` type is used instead. Similarly `var JsonDumper` is used instead of `var string` for dumping. This may hurt efficiency a bit but helps to not pollute the namespace and distinguishes the hooks by changing the signature rather than giving a unique name. On that note the "Hook" part in names are removed, i.e. `dumpHook` just becomes `dump`.
+* Instead of using a `string, var int` pair in read hooks, a reader type is used. Similarly a writer type is used instead of `var string` for dumping.
+  
+  On top of these, a "format" argument is added to the beginning (as the subject), which is an object type that contains settings for the inputted/outputted JSON.
+  
+  These may hurt efficiency a bit, but they give structure to the hook overloads and distinguish them by changing the signature rather than giving a unique name. On that note the "Hook" part in names are removed, i.e. `dumpHook` just becomes `dump`.
   
   ```nim
   # old:
   proc parseHook(s: string, i: var int, obj: Foo) = ...
   # new:
-  proc read(reader: var JsonReader, obj: Foo) = ...
+  proc read(format: JsonReadFormat, reader: var HoloReader, obj: Foo) = ...
   ```
 
 * The focus on "parsing" and string manipulation is diminished in general in favor of more abstract "reading" and creation of a document. Helpers are added to make this easier but there might be more room for improvement on this.
@@ -27,17 +31,17 @@ Not compatible with jsony's parsing/conversion behavior.
     value: string
 
   # new:
-  proc read(reader: var JsonReader, v: var seq[Header]) =
+  proc read(format: JsonReadFormat, reader: var HoloReader, v: var seq[Header]) =
     for key in readObject(reader):
       var value: string
-      read(reader, value)
+      read(format, reader, value)
       v.add(Header(key: key, value: value))
-  proc dump(dumper: var JsonDumper, v: seq[Header]) =
+  proc dump(format: JsonDumpFormat, writer: var HoloWriter, v: seq[Header]) =
     var obj: ObjectDump
-    dumper.withObjectDump(obj):
+    format.withObjectDump(writer, obj):
       for header in v:
-        dumper.withObjectField(obj, header.key):
-          dump(dumper, header.value)
+        format.withObjectField(writer, obj, header.key):
+          dump(format, writer, header.value)
 
   # previous:
   proc parseHook(s: string, i: var int, v: var seq[Header]) =
@@ -98,7 +102,7 @@ Not compatible with jsony's parsing/conversion behavior.
 
 * Instead of working on bare strings, "dynamic buffers" from [holo-flow](https://github.com/holo-nim/holo-flow) are used.
 
-* The existence of the reader/dumper objects allows for line/column handling and options for different behavior, a potential option is for pretty output but is not implemented yet.
+* The existence of the format and reader/writer objects allows for line/column handling and options for different behavior, a potential option is for pretty output but is not implemented yet.
 
 ### Data representation
 

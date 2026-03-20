@@ -68,7 +68,7 @@ type Fraction = object
   numerator: int
   denominator: int
 
-proc dump(format: JsonOutputFormat, s: var HoloWriter, v: Fraction) =
+proc dump(format: JsonDumpFormat, s: var HoloWriter, v: Fraction) =
   ## Output fraction type as a string "x/y".
   if true: # `write` is exported so no need to import holo_writer
     s.write '"'
