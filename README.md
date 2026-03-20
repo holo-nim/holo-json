@@ -23,6 +23,8 @@ Not compatible with jsony's parsing/conversion behavior.
   proc read(format: JsonReadFormat, reader: var HoloReader, obj: Foo) = ...
   ```
 
+  This might look cluttered, but the goal is also to reduce the number of cases where a custom hook has to be written in the first place, as will be shown below.
+
 * The focus on "parsing" and string manipulation is diminished in general in favor of more abstract "reading" and creation of a document. Helpers are added to make this easier but there might be more room for improvement on this.
 
   ```nim
