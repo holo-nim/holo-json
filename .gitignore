@@ -1,13 +1,5 @@
-# ignore files with no extention:
-*
-!*/
-!*.*
-
-# normal ignores:
 *.js
 *.exe
 nimcache
 *.pdb
 *.ilk
-.*
-!.github

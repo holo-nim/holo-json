@@ -1,6 +1,6 @@
 ## `dump` hooks for stdlib types
 
-import ./[common, dumperbasic], holo_flow/holo_writer, std/[options, sets, tables]
+import ./[common, dumper_basic], holo_flow/holo_writer, std/[options, sets, tables]
 
 proc dump*[T](format: JsonDumpFormat, writer: var HoloWriter, v: Option[T]) {.inline.} =
   mixin dump

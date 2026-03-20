@@ -114,4 +114,4 @@ Not compatible with jsony's parsing/conversion behavior.
 * Enums allow representation as integers instead of strings via an option. Although this can be done with hooks it's nicer to be able to change what's opt in and what's opt out.
 * Some weird `null` handling is removed: Non-ref objects and strings accepted `null` and interpreted it to mean "empty", as in reading nothing. Now it is allowed only where an explicit `null` value exists (like `nil` or `None`). The old behavior might become a config option but it is hard to justify for specifically objects and strings.
 * `\x` is optionally supported for nicer byte strings (I guess if base64 isn't available).
-* The generalized `pairs` dumper for objects is removed as it causes problems when the key isn't a string, instead there is a manual `string | enum` table implementation in `dumperstdlib` same as the read hook from the original jsony.
+* The generalized `pairs` dumper for objects is removed as it causes problems when the key isn't a string, instead there is a manual `string | enum` table implementation in `dumper_stdlib` same as the read hook from the original jsony.

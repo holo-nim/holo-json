@@ -1,6 +1,6 @@
 ## `read` hooks for stdlib types
 
-import ./[common, readerbasic], holo_flow/holo_reader, std/[options, tables, sets]
+import ./[common, reader_basic], holo_flow/holo_reader, std/[options, tables, sets]
 
 proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var Option[T]) =
   ## Parse an Option.
