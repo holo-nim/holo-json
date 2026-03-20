@@ -586,7 +586,7 @@ proc crudeReplaceIdent(n: NimNode, name: string, val: NimNode): NimNode =
     for a in n:
       result.add(crudeReplaceIdent(a, name, val))
 
-macro genRenameCase(fields: static openArray[(string, FieldJsonOptions)], key: string, v: untyped): untyped =
+macro genRenameCase(fields: static openArray[(string, FieldMapping)], key: string, v: untyped): untyped =
   result = newNimNode(nnkCaseStmt, v)
   result.add key
   for fieldName, options in fields.items:
@@ -643,8 +643,8 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
               break all
           discard skipValue(format, reader)
       else:
-        const fieldOptions = fieldOptionPairs(v)
-        genRenameCase(fieldOptions, key, v)
+        const fieldMappings = fieldMappingPairs(v)
+        genRenameCase(fieldMappings, key, v)
     eatSpace(reader)
     if reader.nextMatch(','):
       discard
@@ -705,7 +705,7 @@ template initObjVariant[T](v: var T, discrim) =
   objvar.new(v, discrim)
   startObjectRead(format, reader, v)
 
-macro genDiscrimCase(fields: static openArray[(string, FieldJsonOptions)], key: string, v: typed): untyped =
+macro genDiscrimCase(fields: static openArray[(string, FieldMapping)], key: string, v: typed): untyped =
   let discrim = $discriminator(v)
   result = newNimNode(nnkCaseStmt, v)
   result.add key
@@ -769,8 +769,8 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
             initObjVariant(v, discriminator)
             break
         else:
-          const fieldOptions = fieldOptionPairs(v)
-          genDiscrimCase(fieldOptions, key, v)
+          const fieldMappings = fieldMappingPairs(v)
+          genDiscrimCase(fieldMappings, key, v)
         discard skipValue(format, reader)
         if not reader.peekMatch('}'):
           # needs space skipped above?

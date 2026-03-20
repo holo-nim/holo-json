@@ -1,7 +1,7 @@
 import holo_json, std/strutils
 
 type Node = ref object
-  kind {.json: "type".}: string
+  kind {.mapping: "type".}: string
 
 const nodeJson = """{"type":"root"}"""
 var node = nodeJson.fromJson(Node)
@@ -14,12 +14,12 @@ type
     nkFloat,         # a leaf with a float value
   RefNode = ref object
     active: bool
-    case kind {.json: "type".}: NodeNumKind # the ``kind`` field is the discriminator
+    case kind {.mapping: "type".}: NodeNumKind # the ``kind`` field is the discriminator
     of nkInt: intVal: int
     of nkFloat: floatVal: float
   ValueNode = object
     active: bool
-    case kind {.json: "type".}: NodeNumKind # the ``kind`` field is the discriminator
+    case kind {.mapping: "type".}: NodeNumKind # the ``kind`` field is the discriminator
     of nkInt: intVal: int
     of nkFloat: floatVal: float
 
@@ -58,7 +58,7 @@ block:
 
 type
   FooBar = object
-    `Foo Bar` {.json: "Foo Bar".}: string
+    `Foo Bar` {.mapping: "Foo Bar".}: string
 
 const jsonString = "{\"Foo Bar\": \"Hello World\"}"
 

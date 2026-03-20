@@ -46,12 +46,12 @@ const
   nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
 proc matchCustomPragma(sym: NimNode): bool =
-  result = sym.kind == nnkSym and sym.eqIdent"json"
+  result = sym.kind == nnkSym and sym.eqIdent"mapping"
   if result:
     let impl = getImpl(sym)
     result = impl != nil and impl.kind == nnkTemplateDef
 
-proc buildFieldOptionPairs*(obj: NimNode): NimNode =
+proc buildFieldMappingPairs*(obj: NimNode): NimNode =
   var names: seq[(string, NimNode)] = @[]
   var t = obj
   var isTuple = false
@@ -102,9 +102,9 @@ proc buildFieldOptionPairs*(obj: NimNode): NimNode =
               let val = p[i]
               val.add newTree(nnkExprColonExpr, key, val)
     if val == nil:
-      val = quote do: FieldJsonOptions()
+      val = quote do: FieldMapping()
     else:
-      val = quote do: toFieldOptions(`val`)
+      val = quote do: toFieldMapping(`val`)
     result.add(newTree(nnkTupleConstr,
       newLit(name),
       val))
@@ -112,25 +112,27 @@ proc buildFieldOptionPairs*(obj: NimNode): NimNode =
       let ident = ident(name)
       if isTuple:
         quote do:
-          FieldJsonOptions()
+          FieldMapping()
       else:
         quote do:
           when hasCustomPragma(`obj`.`ident`, `pragmaSym`):
-            toFieldOptions(getCustomPragmaVal(`obj`.`ident`, `pragmaSym`))
+            toFieldMapping(getCustomPragmaVal(`obj`.`ident`, `pragmaSym`))
           else:
-            FieldJsonOptions()
+            FieldMapping()
 
-macro fieldOptionPairs*[T: object | ref object | tuple](obj: T): untyped =
-  result = buildFieldOptionPairs(obj)
+macro fieldMappingPairs*[T: object | ref object | tuple](obj: T): untyped =
+  result = buildFieldMappingPairs(obj)
 
-macro fieldOptionPairs*[T: object | ref object | tuple](obj: typedesc[T]): untyped =
-  result = buildFieldOptionPairs(obj)
+macro fieldMappingPairs*[T: object | ref object | tuple](obj: typedesc[T]): untyped =
+  result = buildFieldMappingPairs(obj)
 
-macro fieldOptionTable*[T: object | ref object | tuple](obj: T): Table[string, FieldJsonOptions] =
-  result = newCall(bindSym"toTable", buildFieldOptionPairs(obj))
+template fieldMappingTable*[T: object | ref object | tuple](obj: T): Table[string, FieldMapping] =
+  mixin fieldMappingPairs
+  toTable fieldMappingPairs(obj)
 
-macro fieldOptionTable*[T: object | ref object | tuple](obj: typedesc[T]): Table[string, FieldJsonOptions] =
-  result = newCall(bindSym"toTable", buildFieldOptionPairs(obj))
+template fieldMappingTable*[T: object | ref object | tuple](obj: typedesc[T]): Table[string, FieldMapping] =
+  mixin fieldMappingPairs
+  toTable fieldMappingPairs(obj)
 
 # XXX types could also define hooks for these too
 # where to put the hook definition though, this module imports common

@@ -60,7 +60,7 @@ type
     of NameString: str*: string
     of NameSnakeCase: discard
     of NameConcat: concat*: seq[NamePattern]
-  FieldJsonOptions* = object
+  FieldMapping* = object
     ## json serialization/deserialization options for an object field
     readNames*: seq[NamePattern]
       ## names that are accepted for this field when encountered in json
@@ -72,12 +72,12 @@ type
       ## if not given, this defaults to the original field name
     # maybe normalize case option
 
-template json*(options: FieldJsonOptions) {.pragma.}
+template mapping*(options: FieldMapping) {.pragma.}
   ## sets the json serialization/deserialization options for a field
-template json*(name: string) {.pragma.}
+template mapping*(name: string) {.pragma.}
   ## sets a single name between json serialization/deserialization for a field,
   ## can be fine tuned by giving a custom options object
-template json*(enabled: bool) {.pragma.}
+template mapping*(enabled: bool) {.pragma.}
   ## whether or not to enable this field for both json serialization and deserialization,
   ## can be fine tuned by giving a custom options object
 
@@ -89,28 +89,28 @@ proc snakeCase*(): NamePattern =
   ## creates a name pattern that just converts a field name to snake case
   NamePattern(kind: NameSnakeCase)
 
-proc toFieldOptions*(options: FieldJsonOptions): FieldJsonOptions {.inline.} =
+proc toFieldMapping*(options: FieldMapping): FieldMapping {.inline.} =
   ## hook called on the argument to the `json` pragma to convert it to a full field option object
   options
 
-proc toFieldOptions*(name: NamePattern): FieldJsonOptions =
+proc toFieldMapping*(name: NamePattern): FieldMapping =
   ## hook called on the argument to the `json` pragma to convert it to a full field option object,
   ## for a name pattern this sets both the serialization and deserialization name of the field to it
-  FieldJsonOptions(readNames: @[name], dumpName: name)
+  FieldMapping(readNames: @[name], dumpName: name)
 
-proc toFieldOptions*(name: string): FieldJsonOptions =
+proc toFieldMapping*(name: string): FieldMapping =
   ## hook called on the argument to the `json` pragma to convert it to a full field option object,
   ## for a string this sets both the serialization and deserialization name of the field to it
-  toFieldOptions(toName(name))
+  toFieldMapping(toName(name))
 
-proc toFieldOptions*(enabled: bool): FieldJsonOptions =
+proc toFieldMapping*(enabled: bool): FieldMapping =
   ## hook called on the argument to the `json` pragma to convert it to a full field option object,
   ## for a bool this sets whether or not to enable serialization and deserialization for this field
-  FieldJsonOptions(ignoreRead: not enabled, ignoreDump: not enabled)
+  FieldMapping(ignoreRead: not enabled, ignoreDump: not enabled)
 
-proc ignore*(): FieldJsonOptions =
+proc ignore*(): FieldMapping =
   ## creates a field option object that ignores this field in both serialization and deserialization
-  FieldJsonOptions(ignoreRead: true, ignoreDump: true)
+  FieldMapping(ignoreRead: true, ignoreDump: true)
 
 proc apply*(pattern: NamePattern, name: string): string =
   ## applies a name pattern to a given name
@@ -128,7 +128,7 @@ proc apply*(pattern: NamePattern, name: string): string =
     result = apply(pattern.concat[0], name)
     for i in 1 ..< pattern.concat.len: result.add apply(pattern.concat[i], name)
 
-proc getReadNames*(fieldName: string, options: FieldJsonOptions): seq[string] =
+proc getReadNames*(fieldName: string, options: FieldMapping): seq[string] =
   ## gives the names accepted for this field when encountered in json
   ## if none are given, this defaults to the original field name and a snake case version of it
   if options.readNames.len != 0:
@@ -144,7 +144,7 @@ proc getReadNames*(fieldName: string, options: FieldJsonOptions): seq[string] =
     else:
       result = @[snakeCaseDynamic(fieldName)]
 
-proc getDumpName*(fieldName: string, options: FieldJsonOptions): string =
+proc getDumpName*(fieldName: string, options: FieldMapping): string =
   ## gives the name to dump this field in json by
   ## if not given, this defaults to the original field name
   if options.dumpName.kind != NoName:

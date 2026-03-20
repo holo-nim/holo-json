@@ -72,7 +72,7 @@ Not compatible with jsony's parsing/conversion behavior.
     s.add '}'
   ```
 
-* Instead of `renameHook` and `skipHook` for objects, options for fields in the form of a pragma are preferred. There might be a hook for these in the future as well but it will likely have to work at compile time. More info on the possible field options are in the [documentation](https://holo-nim.github.io/holo-json/docs/common.html#json.t%2CFieldJsonOptions).
+* Instead of `renameHook` and `skipHook` for objects, options for fields in the form of a pragma are preferred. There might be a hook for these in the future as well but it will likely have to work at compile time. More info on the possible field options are in the [documentation](https://holo-nim.github.io/holo-json/docs/common.html#json.t%2CFieldMapping).
 
   ```nim
   # previous:

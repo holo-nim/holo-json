@@ -441,7 +441,7 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
       inc i
   else:
     # Normal objects.
-    const fieldOptions = fieldOptionTable(v)
+    const fieldMappings = fieldMappingTable(v)
     for k, e in v.fieldPairs:
       when jsonyHookCompatibility and compiles(skipHook(type(v), k)):
         when skipHook(type(v), k):
@@ -453,7 +453,7 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
           format.dump(writer, e)
           inc i
       else:
-        const options = fieldOptions.getOrDefault(k)
+        const options = fieldMappings.getOrDefault(k)
         when not options.ignoreDump:
           if i > 0:
             writer.write ','

@@ -2,18 +2,18 @@ import holo_json
 
 type
   Foo {.inheritable.} = object
-    a {.json: "x".}: string
-    case b {.json: "y".}: uint8 #range[0..5] # https://github.com/nim-lang/Nim/pull/25585
+    a {.mapping: "x".}: string
+    case b {.mapping: "y".}: uint8 #range[0..5] # https://github.com/nim-lang/Nim/pull/25585
     of 0..2:
-      c {.json: "z".}: int
+      c {.mapping: "z".}: int
       #when true: # nim limitation
-      d {.json: "t".}: bool
+      d {.mapping: "t".}: bool
     else:
       discard
     notRenamed: string
 
   Bar = ref object of Foo
-    e {.json: "u".}: int
+    e {.mapping: "u".}: int
 
 when false:
   let renames = {
