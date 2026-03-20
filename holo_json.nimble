@@ -1,6 +1,6 @@
 version     = "0.1.0"
 author      = "Andre von Houck -> metagn"
-description = "fork of jsony adapted to holo-flow"
+description = "usable fork of jsony"
 license     = "MIT"
 
 srcDir = "src"
