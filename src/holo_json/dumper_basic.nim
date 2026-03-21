@@ -224,133 +224,179 @@ proc validRuneAt(s: string, i: int, rune: var Rune): int =
   # Based on fastRuneAt from std/unicode
   result = 0
 
-  template ones(n: untyped): untyped = ((1 shl n)-1)
+  template ones(n: untyped): untyped = static((1 shl n)-1)
 
-  if uint(s[i]) <= 127:
+  if uint8(s[i]) <= 127:
     result = 1
-    rune = Rune(uint(s[i]))
-  elif uint(s[i]) shr 5 == 0b110:
+    rune = Rune(s[i].byte)
+  elif uint8(s[i]) shr 5 == 0b110:
     if i <= s.len - 2:
-      let valid = (uint(s[i+1]) shr 6 == 0b10)
+      let valid = (uint8(s[i+1]) shr 6 == 0b10)
       if valid:
         result = 2
         rune = Rune(
-          (uint(s[i]) and (ones(5))) shl 6 or
-          (uint(s[i+1]) and ones(6))
+          (uint8(s[i]) and (ones(5))) shl 6 or
+          (uint8(s[i+1]) and ones(6))
         )
-  elif uint(s[i]) shr 4 == 0b1110:
+  elif uint8(s[i]) shr 4 == 0b1110:
     if i <= s.len - 3:
       let valid =
-        (uint(s[i+1]) shr 6 == 0b10) and
-        (uint(s[i+2]) shr 6 == 0b10)
+        (uint8(s[i+1]) shr 6 == 0b10) and
+        (uint8(s[i+2]) shr 6 == 0b10)
       if valid:
         result = 3
         rune = Rune(
-          (uint(s[i]) and ones(4)) shl 12 or
-          (uint(s[i+1]) and ones(6)) shl 6 or
-          (uint(s[i+2]) and ones(6))
+          (uint8(s[i]) and ones(4)) shl 12 or
+          (uint8(s[i+1]) and ones(6)) shl 6 or
+          (uint8(s[i+2]) and ones(6))
         )
-  elif uint(s[i]) shr 3 == 0b11110:
+  elif uint8(s[i]) shr 3 == 0b11110:
     if i <= s.len - 4:
       let valid =
-        (uint(s[i+1]) shr 6 == 0b10) and
-        (uint(s[i+2]) shr 6 == 0b10) and
-        (uint(s[i+3]) shr 6 == 0b10)
+        (uint8(s[i+1]) shr 6 == 0b10) and
+        (uint8(s[i+2]) shr 6 == 0b10) and
+        (uint8(s[i+3]) shr 6 == 0b10)
       if valid:
         result = 4
         rune = Rune(
-          (uint(s[i]) and ones(3)) shl 18 or
-          (uint(s[i+1]) and ones(6)) shl 12 or
-          (uint(s[i+2]) and ones(6)) shl 6 or
-          (uint(s[i+3]) and ones(6))
+          (uint8(s[i]) and ones(3)) shl 18 or
+          (uint8(s[i+1]) and ones(6)) shl 12 or
+          (uint8(s[i+2]) and ones(6)) shl 6 or
+          (uint8(s[i+3]) and ones(6))
         )
 
 const hex = [
   '0', '1', '2', '3', '4', '5', '6', '7',
   '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 
+const holoJsonDumpStrCopyMem* {.booldefine.} = not defined(js)
+  ## optimization copied from jsony
+
 proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
   writer.write '"'
 
-  var
-    i = 0
-    copyStart = 0
-    inCopy = false
-  template enterCopy() =
-    if not inCopy:
-      copyStart = i
-      inCopy = true
-  template finishCopy() =
-    if inCopy:
-      if i >= copyStart:
-        let numBytes = i - copyStart
-        when nimvm:
-          for p in 0 ..< numBytes:
-            writer.buffer.add v[copyStart + p]
-        else:
-          when defined(js) or defined(nimscript):
-            for p in 0 ..< numBytes:
-              writer.buffer.add v[copyStart + p]
-          else:
-            let sLen = writer.buffer.len
-            writer.buffer.setLen(sLen + numBytes)
-            copyMem(writer.buffer[sLen].addr, v[copyStart].unsafeAddr, numBytes)
-        writer.consumeBuffer()
+  var i = 0
+
+  const compileCopy = holoJsonDumpStrCopyMem
+  template ifCopy(body) =
+    when compileCopy:
+      when nimvm:
+        discard
+      else:
+        body
+  template ifCopy(body, elseBody) =
+    when compileCopy:
+      when nimvm:
+        elseBody
+      else:
+        body
+    else:
+      elseBody
+
+  when compileCopy:
+    var
+      copyStart = 0
       inCopy = false
-  try:
-    while i < v.len:
-      let c = v[i]
-      if (cast[uint8](c) and 0b10000000) == 0:
-        # When the high bit is not set this is a single-byte character (ASCII)
-        # Does this character need escaping?
-        if c < 32.char or c == '\\' or c == '"':
-          finishCopy()
-          case c:
-          of '\\': writer.write r"\\"
-          of '\b': writer.write r"\b"
-          of '\f': writer.write r"\f"
-          of '\n': writer.write r"\n"
-          of '\r': writer.write r"\r"
-          of '\t': writer.write r"\t"
-          of '\v':
-            if format.useXEscape:
-              writer.write r"\x0b"
-            else:
-              writer.write r"\u000b"
-          of '"': writer.write r"\"""
-          of '\0'..'\7', '\14'..'\31':
-            if format.useXEscape:
-              writer.write r"\x"
-            else:
-              writer.write r"\u00"
-            writer.write hex[c.int shr 4]
-            writer.write hex[c.int and 0xf]
+    template enterCopy() =
+      if not inCopy:
+        copyStart = i
+        inCopy = true
+    template finishCopy() =
+      if inCopy:
+        if i >= copyStart:
+          let numBytes = i - copyStart
+          let sLen = writer.buffer.len
+          writer.buffer.setLen(sLen + numBytes)
+          when nimvm:
+            for p in 0 ..< numBytes:
+              writer.buffer[sLen + p] = v[copyStart + p]
           else:
-            discard # Not possible
-          inc i
-        else:
-          enterCopy()
-          inc i
-      else: # Multi-byte characters
-        var r = 0
-        if format.keepUtf8:
-          var rune: Rune # not used apparently
-          r = v.validRuneAt(i, rune)
-        if r != 0:
-          enterCopy()
-          i += r
-        else: # Not a valid rune, use replacement character 
+            when defined(js) or defined(nimscript):
+              for p in 0 ..< numBytes:
+                writer.buffer[sLen + p] = v[copyStart + p]
+            else:
+              copyMem(writer.buffer[sLen].addr, v[copyStart].unsafeAddr, numBytes)
+          writer.consumeBuffer()
+        inCopy = false
+
+  while i < v.len:
+    let c = v[i]
+    if (cast[uint8](c) and 0b10000000) == 0:
+      # When the high bit is not set this is a single-byte character (ASCII)
+      # Does this character need escaping?
+      if c < 32.char or c == '\\' or c == '"':
+        ifCopy:
           finishCopy()
-          when false:
-            s.add Rune(0xfffd) # ??? this is just bad
+        case c
+        of '\\': writer.write r"\\"
+        of '\b': writer.write r"\b"
+        of '\f': writer.write r"\f"
+        of '\n': writer.write r"\n"
+        of '\r': writer.write r"\r"
+        of '\t': writer.write r"\t"
+        of '\v':
+          if format.useXEscape:
+            writer.write r"\x0b"
+          else:
+            writer.write r"\u000b"
+        of '"': writer.write r"\"""
+        else:
           if format.useXEscape:
             writer.write r"\x"
           else:
             writer.write r"\u00"
           writer.write hex[c.int shr 4]
           writer.write hex[c.int and 0xf]
+      else:
+        ifCopy:
+          enterCopy()
+        do: # else for ifCopy
+          writer.write c
+      inc i
+    else: # Multi-byte characters
+      var rune: Rune
+      let r = v.validRuneAt(i, rune)
+      if format.keepUtf8:
+        if r == 0:
+          # invalid rune
+          case format.invalidUtf8
+          of EncodeInvalidUtf8:
+            ifCopy:
+              finishCopy()
+            if format.useXEscape:
+              writer.write r"\x"
+            else:
+              writer.write r"\u00"
+            writer.write hex[c.int shr 4]
+            writer.write hex[c.int and 0xf]
+          of ReplaceInvalidUtf8:
+            ifCopy:
+              finishCopy()
+            writer.write Rune(0xfffd)
+          of KeepInvalidUtf8:
+            ifCopy:
+              enterCopy()
+            do: # else for ifCopy
+              writer.write c
           inc i
-  finally:
+        else:
+          ifCopy:
+            enterCopy()
+          do: # else for ifCopy
+            writer.write v.toOpenArray(i, i + r - 1)
+          i += r
+      else:
+        ifCopy:
+          finishCopy()
+        # XXX maybe encode full utf16?
+        if format.useXEscape:
+          writer.write r"\x"
+        else:
+          writer.write r"\u00"
+        writer.write hex[c.int shr 4]
+        writer.write hex[c.int and 0xf]
+        inc i
+  ifCopy:
     finishCopy()
 
   writer.write '"'

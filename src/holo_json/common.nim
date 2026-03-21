@@ -12,9 +12,14 @@ type
     # XXX comments?
   EnumOutput* = enum
     EnumName, EnumOrd
+  InvalidUtf8Output* = enum
+    EncodeInvalidUtf8 ## encodes invalid utf8 in escape sequence
+    ReplaceInvalidUtf8 ## replaces invalid utf8 with replacement character
+    KeepInvalidUtf8 ## keeps invalid utf8 characters as-is
   JsonDumpFormat* = object
     keepUtf8*: bool = true
       ## keeps valid utf 8 codepoints in strings as-is instead of encoding an escape sequence
+    invalidUtf8*: InvalidUtf8Output = EncodeInvalidUtf8
     useXEscape*: bool
       ## uses \x instead of \u for characters known to be small, not in json standard
     rawJsNanInf*: bool

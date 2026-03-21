@@ -405,6 +405,9 @@ proc parseByte(reader: var HoloReader): byte =
   reader.unsafeNextBy(hexStr.len)
   result = parseHexInt(reader, hexStr).byte
 
+const holoJsonReadStrCopyMem* {.booldefine.} = not defined(js)
+  ## optimization copied from jsony, seems to be faster except maybe on js/nimscript
+
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
   ## Parse string.
   eatSpace(reader)
@@ -415,72 +418,93 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
 
   eatChar(reader, '"')
 
-  var
-    copyStart = 0
-    inCopy = false
-  template enterCopy() =
-    if not inCopy:
-      reader.lockBuffer()
-      copyStart = reader.bufferPos
-      inCopy = true
-  template finishCopy() =
-    if inCopy:
-      if reader.bufferPos >= copyStart:
-        let numBytes = reader.bufferPos - copyStart + 1
-        when nimvm:
-          for p in 0 ..< numBytes:
-            v.add reader.buffer[copyStart + p]
-        else:
-          when defined(js) or defined(nimscript):
-            for p in 0 ..< numBytes:
-              v.add reader.buffer[copyStart + p]
-          else:
-            let vLen = v.len
-            v.setLen(vLen + numBytes)
-            copyMem(v[vLen].addr, reader.buffer[copyStart].unsafeAddr, numBytes)
-      reader.unlockBuffer()
-      inCopy = false
-  try:
-    var c: char
-    while reader.peek(c):
-      if format.forceUtf8Strings and (cast[uint8](c) and 0b10000000) != 0: # Multi-byte characters
-        var r: Rune
-        let byteCount = reader.validRune(r, c)
-        if byteCount != 0:
-          reader.unsafeNextBy(byteCount)
-        else: # Not a valid rune
-          reader.error("Found invalid UTF-8 character.")
+  const compileCopy = holoJsonReadStrCopyMem
+  template ifCopy(body) =
+    when compileCopy:
+      when nimvm:
+        discard
       else:
-        # When the high bit is not set this is a single-byte character (ASCII)
-        case c
-        of '"':
-          break
-        of '\\':
-          if not reader.hasNext(offset = 1):
-            reader.parseError("Expected escaped character but end reached.")
-          finishCopy()
-          reader.unsafeNext() # first \
-          let c = reader.unsafePeek()
-          reader.unsafeNext() # escape character
-          case c
-          of '"', '\\', '/': v.add(c)
-          of 'b': v.add '\b'
-          of 'f': v.add '\f'
-          of 'n': v.add '\n'
-          of 'r': v.add '\r'
-          of 't': v.add '\t'
-          of 'u':
-            v.add(Rune(parseUnicodeEscape(format, reader)))
-            continue
-          of 'x':
-            v.add(char(parseByte(reader)))
-            continue
+        body
+  template ifCopy(body, elseBody) =
+    when compileCopy:
+      when nimvm:
+        elseBody
+      else:
+        body
+    else:
+      elseBody
+
+  when compileCopy:
+    var
+      copyStart = 0
+      inCopy = false
+    template enterCopy() =
+      if not inCopy:
+        reader.lockBuffer()
+        copyStart = reader.bufferPos
+        inCopy = true
+    template finishCopy() =
+      if inCopy:
+        if reader.bufferPos >= copyStart:
+          let numBytes = reader.bufferPos - copyStart + 1
+          let vLen = v.len
+          v.setLen(vLen + numBytes)
+          when nimvm:
+            for p in 0 ..< numBytes:
+              v[vLen + p] = reader.buffer[copyStart + p]
           else:
-            v.add(c)
+            when defined(js) or defined(nimscript):
+              for p in 0 ..< numBytes:
+                v[vLen + p] = reader.buffer[copyStart + p]
+            else:
+              copyMem(v[vLen].addr, reader.buffer[copyStart].unsafeAddr, numBytes)
+        reader.unlockBuffer()
+        inCopy = false
+
+  var c: char
+  while reader.peek(c):
+    if format.forceUtf8Strings and (cast[uint8](c) and 0b10000000) != 0: # Multi-byte characters
+      var r: Rune
+      let byteCount = reader.validRune(r, c)
+      if byteCount != 0:
+        reader.unsafeNextBy(byteCount)
+      else: # Not a valid rune
+        reader.error("Found invalid UTF-8 character.")
+    else:
+      # When the high bit is not set this is a single-byte character (ASCII)
+      case c
+      of '"':
+        break
+      of '\\':
+        if not reader.hasNext(offset = 1):
+          reader.parseError("Expected escaped character but end reached.")
+        ifCopy:
+          finishCopy()
+        reader.unsafeNext() # first \
+        let c = reader.unsafePeek()
+        reader.unsafeNext() # escape character
+        case c
+        of '"', '\\', '/': v.add(c)
+        of 'b': v.add '\b'
+        of 'f': v.add '\f'
+        of 'n': v.add '\n'
+        of 'r': v.add '\r'
+        of 't': v.add '\t'
+        of 'u':
+          v.add(Rune(parseUnicodeEscape(format, reader)))
+          continue
+        of 'x':
+          v.add(char(parseByte(reader)))
+          continue
         else:
-          reader.unsafeNext()
+          v.add(c)
+      else:
+        reader.unsafeNext()
+        ifCopy:
           enterCopy()
-  finally:
+        do: # else for ifCopy
+          v.add c
+  ifCopy:
     finishCopy()
 
   eatChar(reader, '"')
