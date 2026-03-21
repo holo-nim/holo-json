@@ -1,7 +1,7 @@
 ## implements reading behavior for basic types
 
-import ./common, private/[objvar, fields, caseutils], holo_flow/holo_reader
-import std/[unicode, parseutils, typetraits, macros, importutils]
+import ./common, private/objvar, holo_map/caseutils, holo_flow/holo_reader
+import std/[unicode, parseutils, typetraits, macros, importutils, tables]
 import std/strutils except format
 import std/json #from std/json import JsonNodeKind, JsonNode
 export HoloReader, initHoloReader, startRead
@@ -569,10 +569,6 @@ proc skipValue*(format: JsonReadFormat, reader: var HoloReader): int =
     result = reader.bufferPos + 1
     discard parseSymbol(reader)
 
-template snakeCase(s: string): string =
-  const k = snakeCaseDynamic(s)
-  k
-
 proc crudeReplaceIdent(n: NimNode, name: string, val: NimNode): NimNode =
   if n.kind in {nnkIdent, nnkAccQuoted, nnkSym, nnkOpenSymChoice, nnkClosedSymChoice}:
     if n.eqIdent(name):
@@ -586,13 +582,13 @@ proc crudeReplaceIdent(n: NimNode, name: string, val: NimNode): NimNode =
     for a in n:
       result.add(crudeReplaceIdent(a, name, val))
 
-macro genRenameCase(fields: static openArray[(string, FieldJsonOptions)], key: string, v: untyped): untyped =
+macro genRenameCase(fields: static openArray[(string, FieldMapping)], key: string, v: untyped): untyped =
   result = newNimNode(nnkCaseStmt, v)
   result.add key
   for fieldName, options in fields.items:
     if not options.ignoreRead:
       var branch = newTree(nnkOfBranch)
-      let readNames = getReadNames(fieldName, options)
+      let readNames = getReadNames(fieldName, options, jsonDefaultReadNames)
       for name in readNames:
         branch.add newLit(name)
       #branch.add crudeReplaceIdent(body, "field", newDotExpr(copy v, ident fieldName))
@@ -636,15 +632,15 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
         renameHook(v, key)
         block all:
           for k, v in v.fieldPairs:
-            if k == key or snakeCase(k) == key:
+            if k == key or static(toSnakeCase(k)) == key:
               var v2: type(v)
               read(format, reader, v2)
               v = v2
               break all
           discard skipValue(format, reader)
       else:
-        const fieldOptions = fieldOptionPairs(v)
-        genRenameCase(fieldOptions, key, v)
+        const fieldMappings = fieldMappings(v, Json)
+        genRenameCase(fieldMappings, key, v)
     eatSpace(reader)
     if reader.nextMatch(','):
       discard
@@ -670,14 +666,78 @@ proc read*[T: tuple](format: JsonReadFormat, reader: var HoloReader, v: var T) =
       discard
   eatChar(reader, ']')
 
+macro genEnumCase[T: enum](t: typedesc[T], s: string, v: var T, mappings: static FieldMappingPairs) =
+  var impl = getTypeInst(t)
+  while true:
+    if impl.kind in {nnkRefTy, nnkPtrTy, nnkVarTy, nnkOutTy}:
+      if impl[^1].kind == nnkObjectTy:
+        impl = impl[^1]
+      else:
+        impl = getTypeInst(impl[^1])
+    elif impl.kind == nnkBracketExpr and impl[0].eqIdent"typeDesc":
+      impl = getTypeInst(impl[1])
+    elif impl.kind == nnkBracketExpr and impl[0].kind == nnkSym:
+      impl = getImpl(impl[0])[^1]
+    elif impl.kind == nnkSym:
+      impl = getImpl(impl)[^1]
+    else:
+      break
+  if impl.kind != nnkEnumTy:
+    error "expected enum type for type impl of " & repr(t), impl
+  let mappingTable = toTable(mappings)
+  result = newNimNode(nnkCaseStmt, s)
+  result.add s
+  for f in impl:
+    # copied from std/enumutils.genEnumCaseStmt
+    var fieldSym: NimNode = nil
+    var fieldStrNodes: seq[NimNode] = @[]
+    case f.kind
+    of nnkEmpty: continue # skip first node of `enumTy`
+    of nnkSym, nnkIdent, nnkAccQuoted, nnkOpenSymChoice, nnkClosedSymChoice:
+      fieldSym = f
+    of nnkEnumFieldDef:
+      fieldSym = f[0]
+      case f[1].kind
+      of nnkStrLit .. nnkTripleStrLit:
+        fieldStrNodes = @[f[1]]
+      of nnkTupleConstr:
+        fieldStrNodes = @[f[1][1]]
+      of nnkIntLit:
+        discard
+      else:
+        let fAst = f[0].getImpl
+        if fAst != nil:
+          case fAst.kind
+          of nnkStrLit .. nnkTripleStrLit:
+            fieldStrNodes = @[fAst]
+          of nnkTupleConstr:
+            fieldStrNodes = @[fAst[1]]
+          else: discard
+    else: error("Invalid node for enum type `" & $f.kind & "`!", f)
+    let fieldName = $fieldSym
+    let mapping = mappingTable.getOrDefault(fieldName, FieldMapping())
+    if hasReadNames(mapping):
+      for readName in mapping.readNames:
+        fieldStrNodes.add newLit apply(readName, fieldName)
+    elif fieldStrNodes.len == 0:
+      fieldStrNodes = @[newLit fieldName]
+    var branch = newTree(nnkOfBranch)
+    branch.add fieldStrNodes
+    branch.add newAssignment(v, newDotExpr(t, fieldSym))
+    result.add branch
+
 proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   eatSpace(reader)
   var strV: string
   if reader.peekMatch('"'):
     read(format, reader, strV)
     # XXX same thing for fields for enums?
-    when compiles(enumHook(strV, v)):
+    when jsonyHookCompatibility and compiles(enumHook(strV, v)):
       enumHook(strV, v)
+    elif T is HasFieldMappings:
+      const fieldMappings = fieldMappings(v, Json)
+      # XXX cannot use by default since normalization is not supported
+      genEnumCase(T, strV, v, fieldMappings)
     else:
       try:
         v = parseEnum[T](strV)
@@ -705,14 +765,14 @@ template initObjVariant[T](v: var T, discrim) =
   objvar.new(v, discrim)
   startObjectRead(format, reader, v)
 
-macro genDiscrimCase(fields: static openArray[(string, FieldJsonOptions)], key: string, v: typed): untyped =
+macro genDiscrimCase(fields: static openArray[(string, FieldMapping)], key: string, v: typed): untyped =
   let discrim = $discriminator(v)
   result = newNimNode(nnkCaseStmt, v)
   result.add key
   for fieldName, options in fields.items:
     if fieldName == discrim:
       var branch = newTree(nnkOfBranch)
-      let readNames = getReadNames(fieldName, options)
+      let readNames = getReadNames(fieldName, options, jsonDefaultReadNames)
       for name in readNames:
         branch.add newLit(name)
       #branch.add crudeReplaceIdent(body, "field", newDotExpr(copy v, ident fieldName))
@@ -769,8 +829,8 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
             initObjVariant(v, discriminator)
             break
         else:
-          const fieldOptions = fieldOptionPairs(v)
-          genDiscrimCase(fieldOptions, key, v)
+          const fieldMappings = fieldMappings(v, Json)
+          genDiscrimCase(fieldMappings, key, v)
         discard skipValue(format, reader)
         if not reader.peekMatch('}'):
           # needs space skipped above?

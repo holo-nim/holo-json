@@ -1,8 +1,7 @@
 ## implements dumping behavior for basic types 
 
-import ./common, holo_flow/holo_writer, std/[json, typetraits, unicode, tables]
+import ./common, holo_flow/holo_writer, std/[json, typetraits, unicode, tables, macros]
 import std/math # for classify
-import private/fields
 
 export HoloWriter, initHoloWriter, startWrite, finishWrite, write
 
@@ -394,10 +393,78 @@ proc dump*[T: tuple](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
     inc i
   writer.write ']'
 
+template dumpStaticStr(writer: var HoloWriter, s: static string) =
+  const s2 = holo_json.toJson(s)
+  writer.write s2
+
+macro genEnumCase[T: enum](t: typedesc[T], v: T, mappings: static FieldMappingPairs) =
+  var impl = getTypeInst(v)
+  while true:
+    if impl.kind in {nnkRefTy, nnkPtrTy, nnkVarTy, nnkOutTy}:
+      if impl[^1].kind == nnkObjectTy:
+        impl = impl[^1]
+      else:
+        impl = getTypeInst(impl[^1])
+    elif impl.kind == nnkBracketExpr and impl[0].eqIdent"typeDesc":
+      impl = getTypeInst(impl[1])
+    elif impl.kind == nnkBracketExpr and impl[0].kind == nnkSym:
+      impl = getImpl(impl[0])[^1]
+    elif impl.kind == nnkSym:
+      impl = getImpl(impl)[^1]
+    else:
+      break
+  if impl.kind != nnkEnumTy:
+    error "expected enum type for type impl of " & repr(t), impl
+  let mappingTable = toTable(mappings)
+  result = newNimNode(nnkCaseStmt, v)
+  result.add v
+  for f in impl:
+    # copied from std/enumutils.genEnumCaseStmt
+    var fieldSym, fieldStrNode: NimNode = nil
+    case f.kind
+    of nnkEmpty: continue # skip first node of `enumTy`
+    of nnkSym, nnkIdent, nnkAccQuoted, nnkOpenSymChoice, nnkClosedSymChoice:
+      fieldSym = f
+    of nnkEnumFieldDef:
+      fieldSym = f[0]
+      case f[1].kind
+      of nnkStrLit .. nnkTripleStrLit:
+        fieldStrNode = f[1]
+      of nnkTupleConstr:
+        fieldStrNode = f[1][1]
+      of nnkIntLit:
+        discard
+      else:
+        let fAst = f[0].getImpl
+        if fAst != nil:
+          case fAst.kind
+          of nnkStrLit .. nnkTripleStrLit:
+            fieldStrNode = fAst
+          of nnkTupleConstr:
+            fieldStrNode = fAst[1]
+          else: discard
+    else: error("Invalid node for enum type `" & $f.kind & "`!", f)
+    let fieldName = $fieldSym
+    let mapping = mappingTable.getOrDefault(fieldName, FieldMapping())
+    if hasDumpName(mapping):
+      fieldStrNode = newLit apply(mapping.dumpName, fieldName)
+    elif fieldStrNode == nil or fieldStrNode.kind notin {nnkStrLit..nnkTripleStrLit}:
+      fieldStrNode = newLit fieldName
+    result.add newTree(nnkOfBranch,
+      newDotExpr(t, fieldSym),
+      newCall(bindSym"dumpStaticStr", ident"writer", fieldStrNode))
+
 proc dump*[T: enum](format: JsonDumpFormat, writer: var HoloWriter, v: T) {.inline.} =
   case format.defaultEnumOutput
   of EnumName:
-    format.dump(writer, $v)
+    when T is HasFieldMappings:
+      const fieldMappings = fieldMappings(v, Json)
+    else:
+      const fieldMappings = default(FieldMappingPairs)
+    # can always use it here, however will not work with custom `$` XXX
+    genEnumCase(T, v, fieldMappings)
+    when false:
+      format.dump(writer, $v)
   of EnumOrd:
     format.dump(writer, ord(v))
 
@@ -441,7 +508,7 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
       inc i
   else:
     # Normal objects.
-    const fieldOptions = fieldOptionTable(v)
+    const fieldMappings = fieldMappingTable(v, Json)
     for k, e in v.fieldPairs:
       when jsonyHookCompatibility and compiles(skipHook(type(v), k)):
         when skipHook(type(v), k):
@@ -453,12 +520,12 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
           format.dump(writer, e)
           inc i
       else:
-        const options = fieldOptions.getOrDefault(k)
+        const options = fieldMappings.getOrDefault(k)
         when not options.ignoreDump:
           if i > 0:
             writer.write ','
           # rename hook not in original jsony
-          writer.dumpKey(getDumpName(k, options))
+          writer.dumpKey(getDumpName(k, options, jsonDefaultDumpName))
           format.dump(writer, e)
           inc i
   writer.write '}'

@@ -5,9 +5,9 @@ type
     id: int
   Foo = object
     a: int
-    password {.json: FieldJsonOptions(ignoreDump: true).}: string
+    password {.mapping: FieldMapping(ignoreDump: true).}: string
     b: float
-    conn {.json: ignore().}: Conn
+    conn {.mapping: ignore().}: Conn
 
 let v = Foo(a:1, password: "12345", b:0.6, conn: Conn(id: 1))
 doAssert v.toJson() ==

@@ -72,7 +72,7 @@ Not compatible with jsony's parsing/conversion behavior.
     s.add '}'
   ```
 
-* Instead of `renameHook` and `skipHook` for objects, options for fields in the form of a pragma are preferred. There might be a hook for these in the future as well but it will likely have to work at compile time. More info on the possible field options are in the [documentation](https://holo-nim.github.io/holo-json/docs/common.html#json.t%2CFieldJsonOptions).
+* Instead of `renameHook` and `skipHook` for objects, options for fields can be given in the form of a pragma, using [holo-map](https://github.com/holo-nim/holo-map). A hook can be used for the full field mapping as well, but it has to work at compile time. More info on the possible field options are in the [documentation](https://holo-nim.github.io/holo-map/docs/fields.html#FieldMapping).
 
   ```nim
   # previous:
@@ -88,11 +88,22 @@ Not compatible with jsony's parsing/conversion behavior.
   
   # new:
   type Node = ref object
-    kind {.json: "type".}: string
+    kind {.mapping: "type".}: string
+  # or:
+  import holo_map/fields
+  type Node = ref object
+    kind: string
+  proc fieldMappings(T: type Node, group: static MappingGroup): FieldMappingPairs =
+    # note: expected to be complete
+    result = @{
+      "kind": toFieldMapping "type"
+    }
 
   var node = """{"type":"root"}""".fromJson(Node)
   doAssert node.kind == "root"
   ```
+
+  The hook can also be overriden for enums, which replaces `enumHook`.
 
   By knowing the field behavior at compile time we can generate a single `case` statement for reading an object field rather than using the magic `fields` iterator and individually checking the name of each field. This could theoretically improve performance but it might not matter much if the objects are small.
 

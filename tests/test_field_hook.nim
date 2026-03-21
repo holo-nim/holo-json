@@ -1,4 +1,4 @@
-import holo_json
+import holo_json, holo_map/fields
 
 type
   Foo {.inheritable.} = object
@@ -15,23 +15,15 @@ type
   Bar = ref object of Foo
     e {.mapping: "u".}: int
 
-when false:
-  let renames = {
-    "a": "x",
-    "b": "y",
-    "c": "z",
-    "d": "t",
-    "e": "u",
-    "notRenamed": "notRenamed"
+proc fieldMappings*(foo: typedesc[Foo], group: static MappingGroup): FieldMappingPairs =
+  @{
+    "a": toFieldMapping "x",
+    "b": toFieldMapping "y",
+    "c": toFieldMapping "z",
+    "d": toFieldMapping "t",
+    "e": toFieldMapping "u",
+    "notRenamed": FieldMapping()
   }
-  var dummy = Bar()
-  for a, b in renames.items:
-    var name = b
-    renameHook dummy, name
-    doAssert name == a, $(name, a)
-
-  proc renameHook*(x: var Bar, y: var string) =
-    jsonwrap.renameHook(x, y)
 
 import std/json
 
