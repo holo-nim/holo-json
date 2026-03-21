@@ -15,7 +15,7 @@ type
   Bar = ref object of Foo
     e {.mapping: "u".}: int
 
-proc fieldMappingPairs*(foo: typedesc[Foo], group: static MappingGroup): FieldMappingPairs =
+proc fieldMappings*(foo: typedesc[Foo], group: static MappingGroup): FieldMappingPairs =
   @{
     "a": toFieldMapping "x",
     "b": toFieldMapping "y",

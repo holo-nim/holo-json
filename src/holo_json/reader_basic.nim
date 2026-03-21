@@ -639,7 +639,7 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
               break all
           discard skipValue(format, reader)
       else:
-        const fieldMappings = fieldMappingPairs(v, Json)
+        const fieldMappings = fieldMappings(v, Json)
         genRenameCase(fieldMappings, key, v)
     eatSpace(reader)
     if reader.nextMatch(','):
@@ -735,7 +735,7 @@ proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.
     when jsonyHookCompatibility and compiles(enumHook(strV, v)):
       enumHook(strV, v)
     elif T is HasFieldMappings:
-      const fieldMappings = fieldMappingPairs(v, Json)
+      const fieldMappings = fieldMappings(v, Json)
       # XXX cannot use by default since normalization is not supported
       genEnumCase(T, strV, v, fieldMappings)
     else:
@@ -829,7 +829,7 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
             initObjVariant(v, discriminator)
             break
         else:
-          const fieldMappings = fieldMappingPairs(v, Json)
+          const fieldMappings = fieldMappings(v, Json)
           genDiscrimCase(fieldMappings, key, v)
         discard skipValue(format, reader)
         if not reader.peekMatch('}'):

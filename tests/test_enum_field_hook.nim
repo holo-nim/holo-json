@@ -7,7 +7,7 @@ type Color = enum
   cBlue
   cGreen
 
-proc fieldMappingPairs(T: type Color, group: static MappingGroup): FieldMappingPairs =
+proc fieldMappings(T: type Color, group: static MappingGroup): FieldMappingPairs =
   result = @{
     "cRed": FieldMapping(),
     "cBlue": FieldMapping(),
@@ -29,7 +29,7 @@ type Color2 = enum
   c2Blue
   c2Green
 
-proc fieldMappingPairs(T: type Color2, group: static MappingGroup): FieldMappingPairs =
+proc fieldMappings(T: type Color2, group: static MappingGroup): FieldMappingPairs =
   result = @{
     "c2Red": toFieldMapping "RED",
     "c2Blue": toFieldMapping "BLUE",

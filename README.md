@@ -72,7 +72,7 @@ Not compatible with jsony's parsing/conversion behavior.
     s.add '}'
   ```
 
-* Instead of `renameHook` and `skipHook` for objects, options for fields can be given in the form of a pragma, using [holo-map](https://github.com/holo-nim/holo-map). A hook can be used for the full field mapping as well, but it has to work at compile time. More info on the possible field options are in the [documentation](https://holo-nim.github.io/holo-json/docs/common.html#json.t%2CFieldMapping).
+* Instead of `renameHook` and `skipHook` for objects, options for fields can be given in the form of a pragma, using [holo-map](https://github.com/holo-nim/holo-map). A hook can be used for the full field mapping as well, but it has to work at compile time. More info on the possible field options are in the [documentation](https://holo-nim.github.io/holo-map/docs/fields.html#FieldMapping).
 
   ```nim
   # previous:
@@ -93,7 +93,7 @@ Not compatible with jsony's parsing/conversion behavior.
   import holo_map/fields
   type Node = ref object
     kind: string
-  proc fieldMappingPairs(T: type Node, group: static MappingGroup): FieldMappingPairs =
+  proc fieldMappings(T: type Node, group: static MappingGroup): FieldMappingPairs =
     result = @{
       "kind": toFieldMapping "type"
     }

@@ -458,9 +458,9 @@ proc dump*[T: enum](format: JsonDumpFormat, writer: var HoloWriter, v: T) {.inli
   case format.defaultEnumOutput
   of EnumName:
     when T is HasFieldMappings:
-      const fieldMappings = fieldMappingPairs(v, Json)
+      const fieldMappings = fieldMappings(v, Json)
     else:
-      const fieldMappings: FieldMappingPairs = @[]
+      const fieldMappings = default(FieldMappingPairs)
     # can always use it here, however will not work with custom `$` XXX
     genEnumCase(T, v, fieldMappings)
     when false:
