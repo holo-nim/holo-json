@@ -46,9 +46,9 @@ import holo_map/fields
 export fields
 
 const Json* = MappingGroup"json"
-const jsonDefaultReadNames* = 
+const jsonDefaultInputNames* = 
   if jsonyFieldCompatibility: @[verbatim(), snakeCase()]
   else: @[snakeCase()]
-const jsonDefaultDumpName* =
+const jsonDefaultOutputName* =
   if jsonyFieldCompatibility: verbatim()
   else: snakeCase()

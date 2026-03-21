@@ -34,7 +34,7 @@ Not compatible with jsony's parsing/conversion behavior.
 
   # new:
   proc read(format: JsonReadFormat, reader: var HoloReader, v: var seq[Header]) =
-    for key in readObject(reader):
+    for key in readObject(format, reader):
       var value: string
       read(format, reader, value)
       v.add(Header(key: key, value: value))

@@ -586,10 +586,10 @@ macro genRenameCase(fields: static openArray[(string, FieldMapping)], key: strin
   result = newNimNode(nnkCaseStmt, v)
   result.add key
   for fieldName, options in fields.items:
-    if not options.ignoreRead:
+    if not options.ignoreInput:
       var branch = newTree(nnkOfBranch)
-      let readNames = getReadNames(fieldName, options, jsonDefaultReadNames)
-      for name in readNames:
+      let inputNames = getInputNames(fieldName, options, jsonDefaultInputNames)
+      for name in inputNames:
         branch.add newLit(name)
       #branch.add crudeReplaceIdent(body, "field", newDotExpr(copy v, ident fieldName))
       let readName = bindSym("read", brForceOpen)
@@ -716,9 +716,9 @@ macro genEnumCase[T: enum](t: typedesc[T], s: string, v: var T, mappings: static
     else: error("Invalid node for enum type `" & $f.kind & "`!", f)
     let fieldName = $fieldSym
     let mapping = mappingTable.getOrDefault(fieldName, FieldMapping())
-    if hasReadNames(mapping):
-      for readName in mapping.readNames:
-        fieldStrNodes.add newLit apply(readName, fieldName)
+    if hasInputNames(mapping):
+      for inputName in mapping.inputNames:
+        fieldStrNodes.add newLit apply(inputName, fieldName)
     elif fieldStrNodes.len == 0:
       fieldStrNodes = @[newLit fieldName]
     var branch = newTree(nnkOfBranch)
@@ -772,8 +772,8 @@ macro genDiscrimCase(fields: static openArray[(string, FieldMapping)], key: stri
   for fieldName, options in fields.items:
     if fieldName == discrim:
       var branch = newTree(nnkOfBranch)
-      let readNames = getReadNames(fieldName, options, jsonDefaultReadNames)
-      for name in readNames:
+      let inputNames = getInputNames(fieldName, options, jsonDefaultInputNames)
+      for name in inputNames:
         branch.add newLit(name)
       #branch.add crudeReplaceIdent(body, "field", newDotExpr(copy v, ident fieldName))
       let fieldIdent = ident fieldName

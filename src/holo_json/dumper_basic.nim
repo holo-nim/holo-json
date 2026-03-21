@@ -446,8 +446,8 @@ macro genEnumCase[T: enum](t: typedesc[T], v: T, mappings: static FieldMappingPa
     else: error("Invalid node for enum type `" & $f.kind & "`!", f)
     let fieldName = $fieldSym
     let mapping = mappingTable.getOrDefault(fieldName, FieldMapping())
-    if hasDumpName(mapping):
-      fieldStrNode = newLit apply(mapping.dumpName, fieldName)
+    if hasOutputName(mapping):
+      fieldStrNode = newLit apply(mapping.outputName, fieldName)
     elif fieldStrNode == nil or fieldStrNode.kind notin {nnkStrLit..nnkTripleStrLit}:
       fieldStrNode = newLit fieldName
     result.add newTree(nnkOfBranch,
@@ -521,11 +521,11 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
           inc i
       else:
         const options = fieldMappings.getOrDefault(k)
-        when not options.ignoreDump:
+        when not options.ignoreOutput:
           if i > 0:
             writer.write ','
           # rename hook not in original jsony
-          writer.dumpKey(getDumpName(k, options, jsonDefaultDumpName))
+          writer.dumpKey(getOutputName(k, options, jsonDefaultOutputName))
           format.dump(writer, e)
           inc i
   writer.write '}'
