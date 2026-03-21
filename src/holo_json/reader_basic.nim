@@ -904,7 +904,7 @@ proc fromJson*[T](s: string, x: typedesc[T]): T {.inline.} =
   ## * `proc startObjectRead(format: JsonReadFormat, reader: var HoloReader, foo: var ...)` Can be used to populate default values.
   mixin read
   result = default(T)
-  var reader = initHoloReader()
+  var reader = initHoloReader(doLineColumn = holoJsonLineColumn)
   reader.startRead(s)
   readJson(reader, result)
   eatSpace(reader)

@@ -1,4 +1,4 @@
-const holojsonLineColumn* {.booldefine.} = true
+const holoJsonLineColumn* {.booldefine.} = true
   ## enables/disables line column tracking by default, has very little impact on performance
 
 type
