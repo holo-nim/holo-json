@@ -94,6 +94,7 @@ Not compatible with jsony's parsing/conversion behavior.
   type Node = ref object
     kind: string
   proc fieldMappings(T: type Node, group: static MappingGroup): FieldMappingPairs =
+    # note: expected to be complete
     result = @{
       "kind": toFieldMapping "type"
     }
