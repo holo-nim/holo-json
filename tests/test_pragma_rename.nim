@@ -54,6 +54,8 @@ block:
   doAssert c.toJson().fromJson(ValueNode).kind == c.kind
   doAssert d.toJson().fromJson(ValueNode).kind == d.kind
 
+import std/json
+
 # test https://forum.nim-lang.org/t/7619
 
 type
@@ -62,5 +64,5 @@ type
 
 const jsonString = "{\"Foo Bar\": \"Hello World\"}"
 
-echo jsonString.fromJson(FooBar)
-echo jsonString.fromJson(FooBar).toJson()
+doAssert jsonString.fromJson(FooBar).`Foo Bar` == "Hello World"
+doAssert jsonString.fromJson(JsonNode) == %*{"Foo Bar": "Hello World"}

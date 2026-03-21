@@ -1,6 +1,6 @@
 ## implements reading behavior for basic types
 
-import ./common, private/[objvar, fields, caseutils], holo_flow/holo_reader
+import ./common, private/objvar, holo_map/caseutils, holo_flow/holo_reader
 import std/[unicode, parseutils, typetraits, macros, importutils]
 import std/strutils except format
 import std/json #from std/json import JsonNodeKind, JsonNode
@@ -569,10 +569,6 @@ proc skipValue*(format: JsonReadFormat, reader: var HoloReader): int =
     result = reader.bufferPos + 1
     discard parseSymbol(reader)
 
-template snakeCase(s: string): string =
-  const k = snakeCaseDynamic(s)
-  k
-
 proc crudeReplaceIdent(n: NimNode, name: string, val: NimNode): NimNode =
   if n.kind in {nnkIdent, nnkAccQuoted, nnkSym, nnkOpenSymChoice, nnkClosedSymChoice}:
     if n.eqIdent(name):
@@ -592,7 +588,7 @@ macro genRenameCase(fields: static openArray[(string, FieldMapping)], key: strin
   for fieldName, options in fields.items:
     if not options.ignoreRead:
       var branch = newTree(nnkOfBranch)
-      let readNames = getReadNames(fieldName, options)
+      let readNames = getReadNames(fieldName, options, jsonDefaultReadNames)
       for name in readNames:
         branch.add newLit(name)
       #branch.add crudeReplaceIdent(body, "field", newDotExpr(copy v, ident fieldName))
@@ -636,14 +632,14 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
         renameHook(v, key)
         block all:
           for k, v in v.fieldPairs:
-            if k == key or snakeCase(k) == key:
+            if k == key or static(toSnakeCase(k)) == key:
               var v2: type(v)
               read(format, reader, v2)
               v = v2
               break all
           discard skipValue(format, reader)
       else:
-        const fieldMappings = fieldMappingPairs(v)
+        const fieldMappings = fieldMappingPairs(v, Json)
         genRenameCase(fieldMappings, key, v)
     eatSpace(reader)
     if reader.nextMatch(','):
@@ -712,7 +708,7 @@ macro genDiscrimCase(fields: static openArray[(string, FieldMapping)], key: stri
   for fieldName, options in fields.items:
     if fieldName == discrim:
       var branch = newTree(nnkOfBranch)
-      let readNames = getReadNames(fieldName, options)
+      let readNames = getReadNames(fieldName, options, jsonDefaultReadNames)
       for name in readNames:
         branch.add newLit(name)
       #branch.add crudeReplaceIdent(body, "field", newDotExpr(copy v, ident fieldName))
@@ -769,7 +765,7 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
             initObjVariant(v, discriminator)
             break
         else:
-          const fieldMappings = fieldMappingPairs(v)
+          const fieldMappings = fieldMappingPairs(v, Json)
           genDiscrimCase(fieldMappings, key, v)
         discard skipValue(format, reader)
         if not reader.peekMatch('}'):

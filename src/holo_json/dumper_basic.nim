@@ -2,7 +2,6 @@
 
 import ./common, holo_flow/holo_writer, std/[json, typetraits, unicode, tables]
 import std/math # for classify
-import private/fields
 
 export HoloWriter, initHoloWriter, startWrite, finishWrite, write
 
@@ -441,7 +440,7 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
       inc i
   else:
     # Normal objects.
-    const fieldMappings = fieldMappingTable(v)
+    const fieldMappings = fieldMappingTable(v, Json)
     for k, e in v.fieldPairs:
       when jsonyHookCompatibility and compiles(skipHook(type(v), k)):
         when skipHook(type(v), k):
@@ -458,7 +457,7 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
           if i > 0:
             writer.write ','
           # rename hook not in original jsony
-          writer.dumpKey(getDumpName(k, options))
+          writer.dumpKey(getDumpName(k, options, jsonDefaultDumpName))
           format.dump(writer, e)
           inc i
   writer.write '}'

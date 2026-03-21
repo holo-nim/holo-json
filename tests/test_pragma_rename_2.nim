@@ -3,9 +3,9 @@ import holo_json
 type
   Foo {.inheritable.} = object
     a {.mapping: "x".}: string
-    case b {.mapping: "y".}: uint8 #range[0..5] # https://github.com/nim-lang/Nim/pull/25585
+    case b {.mapping(Json, "y").}: uint8 #range[0..5] # https://github.com/nim-lang/Nim/pull/25585
     of 0..2:
-      c {.mapping: "z".}: int
+      c {.mapping: "tooGeneral", mapping(Json, "z"), mapping: "tooGeneralAgain".}: int
       #when true: # nim limitation
       d {.mapping: "t".}: bool
     else:
@@ -33,9 +33,11 @@ when false:
   proc renameHook*(x: var Bar, y: var string) =
     jsonwrap.renameHook(x, y)
 
+import std/json
+
 let obj1 = Bar(a: "foo", b: 1, c: 123, d: true, notRenamed: "bar", e: 456)
 let ser = toJson(obj1)
-echo ser
+doAssert ser.fromJson(JsonNode) == %*{"u":456,"x":"foo","y":1,"z":123,"t":true,"not_renamed":"bar"}
 let obj2 = fromJson(ser, Bar)
 doAssert obj1.a == obj2.a
 doAssert obj1.b == obj2.b
