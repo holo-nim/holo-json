@@ -35,7 +35,7 @@ type
     defaultEnumOutput*: EnumOutput
     # XXX maybe pretty mode
 
-const jsonyHookCompatibility* {.booldefine.} = true
+const jsonyHookCompatibility* {.booldefine.} = false
   ## allows compatibility with `renameHook` and `skipHook` which have been replaced with pragmas,
   ## these may become compile time hooks instead. since all other hooks are simply renamed or
   ## had their signature changed, this flag does not affect other hooks
