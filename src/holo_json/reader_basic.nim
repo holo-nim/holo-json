@@ -591,36 +591,6 @@ proc crudeReplaceIdent(n: NimNode, name: string, val: NimNode): NimNode =
     for a in n:
       result.add(crudeReplaceIdent(a, name, val))
 
-macro genRenameCase(fields: static openArray[(string, FieldMapping)], key: string, v: untyped): untyped =
-  result = newNimNode(nnkCaseStmt, v)
-  result.add key
-  for fieldName, options in fields.items:
-    if not options.ignoreInput:
-      var branch = newTree(nnkOfBranch)
-      let inputNames = getInputNames(fieldName, options, jsonDefaultInputNames)
-      for name in inputNames:
-        branch.add newLit(name)
-      #branch.add crudeReplaceIdent(body, "field", newDotExpr(copy v, ident fieldName))
-      let readName = bindSym("read", brForceOpen)
-      let fieldIdent = ident fieldName
-      when false:
-        branch.add newStmtList(
-          newCall(ident"read", ident"format", ident"reader", newDotExpr(copy v, fieldIdent))
-        )
-      else:
-        branch.add quote do:
-          # XXX compiler thinks this is immutable:
-          #read(reader, `v`.`fieldIdent`)
-          var v2: typeof(`v`.`fieldIdent`)
-          `readName`(format, reader, v2)
-          `v`.`fieldIdent` = v2
-      result.add branch
-  if result.len == 1:
-    result = newTree(nnkDiscardStmt, newEmptyNode())
-  else:
-    result.add newTree(nnkElse, quote do:
-      discard skipValue(format, reader))
-
 proc finishObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   ## hook called into when an object/ref object/named tuple has finished reading all fields
   discard
@@ -648,8 +618,15 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
               break all
           discard skipValue(format, reader)
       else:
+        template onFieldInput(f) =
+          # XXX compiler thinks this is immutable:
+          #read(reader, f)
+          var v2: typeof(f)
+          read(format, reader, v2)
+          f = v2
         const fieldMappings = fieldMappings(v, Json)
-        genRenameCase(fieldMappings, key, v)
+        mapFieldInput(v, key, fieldMappings, jsonDefaultInputNames, onFieldInput):
+          discard skipValue(format, reader)
     eatSpace(reader)
     if reader.nextMatch(','):
       discard

@@ -465,9 +465,9 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
       inc i
   else:
     # Normal objects.
-    const fieldMappings = fieldMappingTable(v, Json)
-    for k, e in v.fieldPairs:
-      when jsonyHookCompatibility and compiles(skipHook(type(v), k)):
+    when jsonyHookCompatibility and compiles(skipHook(type(v), k)):
+      # original jsony does not have rename hook here
+      for k, e in v.fieldPairs:
         when skipHook(type(v), k):
           discard
         else:
@@ -476,15 +476,15 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
           writer.dumpKey(k)
           format.dump(writer, e)
           inc i
-      else:
-        const options = fieldMappings.getOrDefault(k)
-        when not options.ignoreOutput:
-          if i > 0:
-            writer.write ','
-          # rename hook not in original jsony
-          writer.dumpKey(getOutputName(k, options, jsonDefaultOutputName))
-          format.dump(writer, e)
-          inc i
+    else:
+      template onFieldOutput(f, fName) =
+        if i > 0:
+          writer.write ','
+        writer.dumpKey(fName)
+        format.dump(writer, f)
+        inc i
+      const fieldMappings = fieldMappings(v, Json)
+      mapFieldOutput(v, fieldMappings, jsonDefaultOutputName, onFieldOutput)
   writer.write '}'
 
 proc dump*[N, T](format: JsonDumpFormat, writer: var HoloWriter, v: array[N, t[T]]) =
