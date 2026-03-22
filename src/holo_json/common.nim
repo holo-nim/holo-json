@@ -1,6 +1,14 @@
 const holoJsonLineColumn* {.booldefine.} = true
   ## enables/disables line column tracking by default, has very little impact on performance
 
+const holoJsonBatchStringAdd* {.booldefine.} = not defined(js)
+  ## adds/copies a range of string characters to read/dump output all at once whenever possible,
+  ## should be faster due to single use of `setLen` but this can also make it slower on JS
+
+const holoJsonStringCopyMem* {.booldefine.} = true
+  ## uses `copyMem` to copy batched string characters whenever available,
+  ## given `holoJsonBatchStringAdd` is enabled
+
 type
   JsonReadFormat* = object
     handleUtf16*: bool = true
@@ -12,9 +20,14 @@ type
     # XXX comments?
   EnumOutput* = enum
     EnumName, EnumOrd
+  InvalidUtf8Output* = enum
+    EscapeInvalidUtf8 ## encodes invalid utf8 in escape sequence
+    ReplaceInvalidUtf8 ## replaces invalid utf8 with replacement character
+    KeepInvalidUtf8 ## keeps invalid utf8 characters as-is
   JsonDumpFormat* = object
     keepUtf8*: bool = true
       ## keeps valid utf 8 codepoints in strings as-is instead of encoding an escape sequence
+    invalidUtf8*: InvalidUtf8Output = EscapeInvalidUtf8
     useXEscape*: bool
       ## uses \x instead of \u for characters known to be small, not in json standard
     rawJsNanInf*: bool

@@ -415,31 +415,35 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
 
   eatChar(reader, '"')
 
-  var
-    copyStart = 0
-    inCopy = false
-  template enterCopy() =
-    if not inCopy:
-      reader.lockBuffer()
-      copyStart = reader.bufferPos
-      inCopy = true
-  template finishCopy() =
-    if inCopy:
-      if reader.bufferPos >= copyStart:
-        let numBytes = reader.bufferPos - copyStart + 1
-        when nimvm:
-          for p in 0 ..< numBytes:
-            v.add reader.buffer[copyStart + p]
-        else:
-          when defined(js) or defined(nimscript):
-            for p in 0 ..< numBytes:
-              v.add reader.buffer[copyStart + p]
-          else:
-            let vLen = v.len
-            v.setLen(vLen + numBytes)
-            copyMem(v[vLen].addr, reader.buffer[copyStart].unsafeAddr, numBytes)
-      reader.unlockBuffer()
+  const doCopy = holoJsonBatchStringAdd
+
+  when doCopy:
+    var
+      copyStart = 0
       inCopy = false
+    template enterCopy() =
+      if not inCopy:
+        reader.lockBuffer()
+        copyStart = reader.bufferPos
+        inCopy = true
+    template finishCopy() =
+      if inCopy:
+        if reader.bufferPos >= copyStart:
+          let numBytes = reader.bufferPos - copyStart + 1
+          let vLen = v.len
+          v.setLen(vLen + numBytes)
+          when nimvm:
+            for p in 0 ..< numBytes:
+              v[vLen + p] = reader.buffer[copyStart + p]
+          else:
+            when not holoJsonStringCopyMem or defined(js) or defined(nimscript):
+              for p in 0 ..< numBytes:
+                v[vLen + p] = reader.buffer[copyStart + p]
+            else:
+              copyMem(v[vLen].addr, reader.buffer[copyStart].unsafeAddr, numBytes)
+        reader.unlockBuffer()
+        inCopy = false
+
   try:
     var c: char
     while reader.peek(c):
@@ -458,7 +462,8 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
         of '\\':
           if not reader.hasNext(offset = 1):
             reader.parseError("Expected escaped character but end reached.")
-          finishCopy()
+          when doCopy:
+            finishCopy()
           reader.unsafeNext() # first \
           let c = reader.unsafePeek()
           reader.unsafeNext() # escape character
@@ -479,9 +484,13 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
             v.add(c)
         else:
           reader.unsafeNext()
-          enterCopy()
+          when doCopy:
+            enterCopy()
+          else:
+            v.add c
   finally:
-    finishCopy()
+    when doCopy:
+      finishCopy()
 
   eatChar(reader, '"')
 
