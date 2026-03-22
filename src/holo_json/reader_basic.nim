@@ -415,23 +415,9 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
 
   eatChar(reader, '"')
 
-  const compileCopy = holoJsonBatchStringAdd
-  template ifCopy(body) =
-    when compileCopy:
-      when nimvm:
-        discard
-      else:
-        body
-  template ifCopy(body, elseBody) =
-    when compileCopy:
-      when nimvm:
-        elseBody
-      else:
-        body
-    else:
-      elseBody
+  const doCopy = holoJsonBatchStringAdd
 
-  when compileCopy:
+  when doCopy:
     var
       copyStart = 0
       inCopy = false
@@ -476,7 +462,7 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
         of '\\':
           if not reader.hasNext(offset = 1):
             reader.parseError("Expected escaped character but end reached.")
-          ifCopy:
+          when doCopy:
             finishCopy()
           reader.unsafeNext() # first \
           let c = reader.unsafePeek()
@@ -498,12 +484,12 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
             v.add(c)
         else:
           reader.unsafeNext()
-          ifCopy:
+          when doCopy:
             enterCopy()
-          do: # else for ifCopy
+          else:
             v.add c
   finally:
-    ifCopy:
+    when doCopy:
       finishCopy()
 
   eatChar(reader, '"')

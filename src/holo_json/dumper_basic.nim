@@ -282,23 +282,9 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
 
   var i = 0
 
-  const compileCopy = holoJsonBatchStringAdd
-  template ifCopy(body) =
-    when compileCopy:
-      when nimvm:
-        discard
-      else:
-        body
-  template ifCopy(body, elseBody) =
-    when compileCopy:
-      when nimvm:
-        elseBody
-      else:
-        body
-    else:
-      elseBody
+  const doCopy = holoJsonBatchStringAdd
 
-  when compileCopy:
+  when doCopy:
     var
       copyStart = 0
       inCopy = false
@@ -331,7 +317,7 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
         # When the high bit is not set this is a single-byte character (ASCII)
         # Does this character need escaping?
         if c < 32.char or c == '\\' or c == '"':
-          ifCopy:
+          when doCopy:
             finishCopy()
           case c
           of '\\': writer.write r"\\"
@@ -346,13 +332,13 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
           else:
             writer.escapeByte(c)
         else:
-          ifCopy:
+          when doCopy:
             enterCopy()
-          do: # else for ifCopy
+          else:
             writer.write c
         inc i
       elif not format.keepUtf8:
-        ifCopy:
+        when doCopy:
           finishCopy()
         # XXX maybe encode full utf16?
         writer.escapeByte(c)
@@ -364,27 +350,27 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
           # invalid rune
           case format.invalidUtf8
           of EscapeInvalidUtf8:
-            ifCopy:
+            when doCopy:
               finishCopy()
             writer.escapeByte(c)
           of ReplaceInvalidUtf8:
-            ifCopy:
+            when doCopy:
               finishCopy()
             writer.write Rune(0xfffd)
           of KeepInvalidUtf8:
-            ifCopy:
+            when doCopy:
               enterCopy()
-            do: # else for ifCopy
+            else:
               writer.write c
           inc i
         else:
-          ifCopy:
+          when doCopy:
             enterCopy()
-          do: # else for ifCopy
+          else:
             writer.write v.toOpenArray(i, i + r - 1)
           i += r
   finally:
-    ifCopy:
+    when doCopy:
       finishCopy()
 
   writer.write '"'
