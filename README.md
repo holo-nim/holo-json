@@ -125,8 +125,31 @@ Not compatible with jsony's parsing/conversion behavior.
 
 * Object field names convert to snake case by default instead of using the original name, and only accept this snake case version rather than either snake case or the original name. Outputting snake case by default is to make the most common real world use cases more convenient, not reading the original name is to not unnecessarily complicate the generated case statements. The original jsony behavior can be brought back with `-d:jsonyFieldCompatibility`, and this behavior is represented by constants in `common.nim`.
   * Not the case for enums though.
+
+* Object variants support detecting from inner fields of variant branches without needing the variant field as in original jsony.
+
+  ```nim
+  type
+    FooKind = enum
+      FieldA, FieldB, FieldC
+    Foo = object
+      case kind: FooKind
+      of FieldA: a: int
+      of FieldB: b: string
+      of FieldC: c: float
+
+  echo fromJson("""{"a": 123}""", Foo) # (kind: FieldA, a: 123)
+  echo fromJson("""{"b": "xyz"}""", Foo) # (kind: FieldB, b: "xyz")
+  ```
+
+  This also helps to initialize variant objects sooner.
+
 * Floats support `NaN`/infinity, by default by using strings as in stdlib json, or optionally with their raw JS equivalents as in JSON5. (Nothing else from JSON5 is supported yet though.)
-* Enums allow representation as integers instead of strings via an option. Although this can be done with hooks it's nicer to be able to change what's opt in and what's opt out.
+
+* Enums allow representation as integers instead of strings via a runtime option. Although this can be done with hooks it's nicer to be able to change what's opt in and what's opt out.
+
 * `\x` is optionally supported for nicer byte strings (I guess if base64 isn't available).
+
 * Some weird `null` handling is removed: Non-ref objects and strings accepted `null` and interpreted it to mean "empty", as in reading nothing. Now it is allowed only where an explicit `null` value exists (like `nil` or `None`). The old behavior might become a config option but it is hard to justify for specifically objects and strings.
+
 * The generalized `pairs` dumper for objects is removed as it causes problems when the key isn't a string, instead there is a manual `string | enum` table implementation in `dumper_stdlib` same as the read hook from the original jsony. This behavior can be brought back with `-d:jsonyPairsObject` but is not recommended.
