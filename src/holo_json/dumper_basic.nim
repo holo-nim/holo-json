@@ -409,72 +409,17 @@ template dumpStaticStr(writer: var HoloWriter, s: static string) =
   const s2 = holo_json.toJson(s)
   writer.write s2
 
-macro genEnumCase[T: enum](t: typedesc[T], v: T, mappings: static FieldMappingPairs) =
-  var impl = getTypeInst(v)
-  while true:
-    if impl.kind in {nnkRefTy, nnkPtrTy, nnkVarTy, nnkOutTy}:
-      if impl[^1].kind == nnkObjectTy:
-        impl = impl[^1]
-      else:
-        impl = getTypeInst(impl[^1])
-    elif impl.kind == nnkBracketExpr and impl[0].eqIdent"typeDesc":
-      impl = getTypeInst(impl[1])
-    elif impl.kind == nnkBracketExpr and impl[0].kind == nnkSym:
-      impl = getImpl(impl[0])[^1]
-    elif impl.kind == nnkSym:
-      impl = getImpl(impl)[^1]
-    else:
-      break
-  if impl.kind != nnkEnumTy:
-    error "expected enum type for type impl of " & repr(t), impl
-  let mappingTable = toTable(mappings)
-  result = newNimNode(nnkCaseStmt, v)
-  result.add v
-  for f in impl:
-    # copied from std/enumutils.genEnumCaseStmt
-    var fieldSym, fieldStrNode: NimNode = nil
-    case f.kind
-    of nnkEmpty: continue # skip first node of `enumTy`
-    of nnkSym, nnkIdent, nnkAccQuoted, nnkOpenSymChoice, nnkClosedSymChoice:
-      fieldSym = f
-    of nnkEnumFieldDef:
-      fieldSym = f[0]
-      case f[1].kind
-      of nnkStrLit .. nnkTripleStrLit:
-        fieldStrNode = f[1]
-      of nnkTupleConstr:
-        fieldStrNode = f[1][1]
-      of nnkIntLit:
-        discard
-      else:
-        let fAst = f[0].getImpl
-        if fAst != nil:
-          case fAst.kind
-          of nnkStrLit .. nnkTripleStrLit:
-            fieldStrNode = fAst
-          of nnkTupleConstr:
-            fieldStrNode = fAst[1]
-          else: discard
-    else: error("Invalid node for enum type `" & $f.kind & "`!", f)
-    let fieldName = $fieldSym
-    let mapping = mappingTable.getOrDefault(fieldName, FieldMapping())
-    if hasOutputName(mapping):
-      fieldStrNode = newLit apply(mapping.outputName, fieldName)
-    elif fieldStrNode == nil or fieldStrNode.kind notin {nnkStrLit..nnkTripleStrLit}:
-      fieldStrNode = newLit fieldName
-    result.add newTree(nnkOfBranch,
-      newDotExpr(t, fieldSym),
-      newCall(bindSym"dumpStaticStr", ident"writer", fieldStrNode))
-
 proc dump*[T: enum](format: JsonDumpFormat, writer: var HoloWriter, v: T) {.inline.} =
   case format.defaultEnumOutput
   of EnumName:
+    template onEnumOutput(s: string) =
+      writer.dumpStaticStr(s)
     when T is HasFieldMappings:
       const fieldMappings = fieldMappings(v, Json)
     else:
       const fieldMappings = default(FieldMappingPairs)
     # can always use it here, however will not work with custom `$` XXX
-    genEnumCase(T, v, fieldMappings)
+    mapEnumFieldOutput(T, v, fieldMappings, onEnumOutput)
     when false:
       format.dump(writer, $v)
   of EnumOrd:

@@ -675,78 +675,19 @@ proc read*[T: tuple](format: JsonReadFormat, reader: var HoloReader, v: var T) =
       discard
   eatChar(reader, ']')
 
-macro genEnumCase[T: enum](t: typedesc[T], s: string, v: var T, mappings: static FieldMappingPairs) =
-  var impl = getTypeInst(t)
-  while true:
-    if impl.kind in {nnkRefTy, nnkPtrTy, nnkVarTy, nnkOutTy}:
-      if impl[^1].kind == nnkObjectTy:
-        impl = impl[^1]
-      else:
-        impl = getTypeInst(impl[^1])
-    elif impl.kind == nnkBracketExpr and impl[0].eqIdent"typeDesc":
-      impl = getTypeInst(impl[1])
-    elif impl.kind == nnkBracketExpr and impl[0].kind == nnkSym:
-      impl = getImpl(impl[0])[^1]
-    elif impl.kind == nnkSym:
-      impl = getImpl(impl)[^1]
-    else:
-      break
-  if impl.kind != nnkEnumTy:
-    error "expected enum type for type impl of " & repr(t), impl
-  let mappingTable = toTable(mappings)
-  result = newNimNode(nnkCaseStmt, s)
-  result.add s
-  for f in impl:
-    # copied from std/enumutils.genEnumCaseStmt
-    var fieldSym: NimNode = nil
-    var fieldStrNodes: seq[NimNode] = @[]
-    case f.kind
-    of nnkEmpty: continue # skip first node of `enumTy`
-    of nnkSym, nnkIdent, nnkAccQuoted, nnkOpenSymChoice, nnkClosedSymChoice:
-      fieldSym = f
-    of nnkEnumFieldDef:
-      fieldSym = f[0]
-      case f[1].kind
-      of nnkStrLit .. nnkTripleStrLit:
-        fieldStrNodes = @[f[1]]
-      of nnkTupleConstr:
-        fieldStrNodes = @[f[1][1]]
-      of nnkIntLit:
-        discard
-      else:
-        let fAst = f[0].getImpl
-        if fAst != nil:
-          case fAst.kind
-          of nnkStrLit .. nnkTripleStrLit:
-            fieldStrNodes = @[fAst]
-          of nnkTupleConstr:
-            fieldStrNodes = @[fAst[1]]
-          else: discard
-    else: error("Invalid node for enum type `" & $f.kind & "`!", f)
-    let fieldName = $fieldSym
-    let mapping = mappingTable.getOrDefault(fieldName, FieldMapping())
-    if hasInputNames(mapping):
-      for inputName in mapping.inputNames:
-        fieldStrNodes.add newLit apply(inputName, fieldName)
-    elif fieldStrNodes.len == 0:
-      fieldStrNodes = @[newLit fieldName]
-    var branch = newTree(nnkOfBranch)
-    branch.add fieldStrNodes
-    branch.add newAssignment(v, newDotExpr(t, fieldSym))
-    result.add branch
-
 proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   eatSpace(reader)
   var strV: string
   if reader.peekMatch('"'):
     read(format, reader, strV)
-    # XXX same thing for fields for enums?
     when jsonyHookCompatibility and compiles(enumHook(strV, v)):
       enumHook(strV, v)
     elif T is HasFieldMappings:
+      # XXX cannot use by default since normalization is not supported yet unlike `parseEnum`
+      template onEnumInput(e: T) =
+        v = e
       const fieldMappings = fieldMappings(v, Json)
-      # XXX cannot use by default since normalization is not supported
-      genEnumCase(T, strV, v, fieldMappings)
+      mapEnumFieldInput(T, strV, fieldMappings, onEnumInput)
     else:
       try:
         v = parseEnum[T](strV)
