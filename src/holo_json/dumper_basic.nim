@@ -351,49 +351,48 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
           do: # else for ifCopy
             writer.write c
         inc i
+      elif not format.keepUtf8:
+        ifCopy:
+          finishCopy()
+        # XXX maybe encode full utf16?
+        if format.useXEscape:
+          writer.write r"\x"
+        else:
+          writer.write r"\u00"
+        writer.write hex[c.int shr 4]
+        writer.write hex[c.int and 0xf]
+        inc i
       else: # Multi-byte characters
         var rune: Rune
         let r = v.validRuneAt(i, rune)
-        if format.keepUtf8:
-          if r == 0:
-            # invalid rune
-            case format.invalidUtf8
-            of EncodeInvalidUtf8:
-              ifCopy:
-                finishCopy()
-              if format.useXEscape:
-                writer.write r"\x"
-              else:
-                writer.write r"\u00"
-              writer.write hex[c.int shr 4]
-              writer.write hex[c.int and 0xf]
-            of ReplaceInvalidUtf8:
-              ifCopy:
-                finishCopy()
-              writer.write Rune(0xfffd)
-            of KeepInvalidUtf8:
-              ifCopy:
-                enterCopy()
-              do: # else for ifCopy
-                writer.write c
-            inc i
-          else:
+        if r == 0:
+          # invalid rune
+          case format.invalidUtf8
+          of EscapeInvalidUtf8:
+            ifCopy:
+              finishCopy()
+            if format.useXEscape:
+              writer.write r"\x"
+            else:
+              writer.write r"\u00"
+            writer.write hex[c.int shr 4]
+            writer.write hex[c.int and 0xf]
+          of ReplaceInvalidUtf8:
+            ifCopy:
+              finishCopy()
+            writer.write Rune(0xfffd)
+          of KeepInvalidUtf8:
             ifCopy:
               enterCopy()
             do: # else for ifCopy
-              writer.write v.toOpenArray(i, i + r - 1)
-            i += r
+              writer.write c
+          inc i
         else:
           ifCopy:
-            finishCopy()
-          # XXX maybe encode full utf16?
-          if format.useXEscape:
-            writer.write r"\x"
-          else:
-            writer.write r"\u00"
-          writer.write hex[c.int shr 4]
-          writer.write hex[c.int and 0xf]
-          inc i
+            enterCopy()
+          do: # else for ifCopy
+            writer.write v.toOpenArray(i, i + r - 1)
+          i += r
   finally:
     ifCopy:
       finishCopy()
