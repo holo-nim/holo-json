@@ -269,6 +269,14 @@ const hex = [
   '0', '1', '2', '3', '4', '5', '6', '7',
   '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 
+template escapeByte(writer: var HoloWriter, c: char) =
+  if format.useXEscape:
+    let chars = ['\\', 'x', hex[c.int shr 4], hex[c.int and 0xF]]
+    writer.write chars
+  else:
+    let chars = ['\\', 'u', '0', '0', hex[c.int shr 4], hex[c.int and 0xF]]
+    writer.write chars
+
 proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
   writer.write '"'
 
@@ -333,18 +341,10 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
           of '\r': writer.write r"\r"
           of '\t': writer.write r"\t"
           of '\v':
-            if format.useXEscape:
-              writer.write r"\x0b"
-            else:
-              writer.write r"\u000b"
+            writer.escapeByte('\v')
           of '"': writer.write r"\"""
           else:
-            if format.useXEscape:
-              writer.write r"\x"
-            else:
-              writer.write r"\u00"
-            writer.write hex[c.int shr 4]
-            writer.write hex[c.int and 0xf]
+            writer.escapeByte(c)
         else:
           ifCopy:
             enterCopy()
@@ -355,12 +355,7 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
         ifCopy:
           finishCopy()
         # XXX maybe encode full utf16?
-        if format.useXEscape:
-          writer.write r"\x"
-        else:
-          writer.write r"\u00"
-        writer.write hex[c.int shr 4]
-        writer.write hex[c.int and 0xf]
+        writer.escapeByte(c)
         inc i
       else: # Multi-byte characters
         var rune: Rune
@@ -371,12 +366,7 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
           of EscapeInvalidUtf8:
             ifCopy:
               finishCopy()
-            if format.useXEscape:
-              writer.write r"\x"
-            else:
-              writer.write r"\u00"
-            writer.write hex[c.int shr 4]
-            writer.write hex[c.int and 0xf]
+            writer.escapeByte(c)
           of ReplaceInvalidUtf8:
             ifCopy:
               finishCopy()
@@ -410,18 +400,10 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: char) =
     of '\r': writer.write r"\r"
     of '\t': writer.write r"\t"
     of '\v':
-      if format.useXEscape:
-        writer.write r"\x0b"
-      else:
-        writer.write r"\u000b"
+      writer.escapeByte('\v')
     of '"': writer.write r"\"""
     else:
-      if format.useXEscape:
-        writer.write r"\x"
-      else:
-        writer.write r"\u00"
-      writer.write hex[v.int shr 4]
-      writer.write hex[v.int and 0xf]
+      writer.escapeByte(v)
   else:
     writer.write v
   writer.write '"'
