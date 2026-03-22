@@ -611,18 +611,12 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
         block all:
           for k, v in fieldPairs(when v is ref: v[] else: v):
             if k == key or static(toSnakeCase(k)) == key:
-              var v2: type(v)
-              read(format, reader, v2)
-              v = v2
+              read(format, reader, v)
               break all
           discard skipValue(format, reader)
       else:
         template onFieldInput(f) =
-          # XXX compiler thinks this is immutable:
-          #read(reader, f)
-          var v2: typeof(f)
-          read(format, reader, v2)
-          f = v2
+          read(format, reader, f)
         const fieldMappings = fieldMappings(v, Json)
         mapFieldInput(v, key, fieldMappings, jsonDefaultInputNames, onFieldInput):
           discard skipValue(format, reader)
