@@ -465,12 +465,14 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
       inc i
   else:
     # Normal objects.
-    when jsonyHookCompatibility and compiles(skipHook(type(v), k)):
-      # original jsony does not have rename hook here
+    when jsonyHookCompatibility and (compiles do:
+        for k, e in v.fieldPairs:
+          discard skipHook(type(v), k)):
       for k, e in v.fieldPairs:
         when skipHook(type(v), k):
           discard
         else:
+          # original jsony does not have rename hook here
           if i > 0:
             writer.write ','
           writer.dumpKey(k)
