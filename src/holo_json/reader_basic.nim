@@ -405,9 +405,6 @@ proc parseByte(reader: var HoloReader): byte =
   reader.unsafeNextBy(hexStr.len)
   result = parseHexInt(reader, hexStr).byte
 
-const holoJsonReadStrCopyMem* {.booldefine.} = not defined(js)
-  ## optimization copied from jsony, seems to be faster except maybe on js/nimscript
-
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
   ## Parse string.
   eatSpace(reader)
@@ -418,7 +415,7 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
 
   eatChar(reader, '"')
 
-  const compileCopy = holoJsonReadStrCopyMem
+  const compileCopy = holoJsonBatchStringAdd
   template ifCopy(body) =
     when compileCopy:
       when nimvm:
@@ -453,7 +450,7 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
             for p in 0 ..< numBytes:
               v[vLen + p] = reader.buffer[copyStart + p]
           else:
-            when defined(js) or defined(nimscript):
+            when not holoJsonStringCopyMem or defined(js) or defined(nimscript):
               for p in 0 ..< numBytes:
                 v[vLen + p] = reader.buffer[copyStart + p]
             else:
@@ -461,51 +458,53 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
         reader.unlockBuffer()
         inCopy = false
 
-  var c: char
-  while reader.peek(c):
-    if format.forceUtf8Strings and (cast[uint8](c) and 0b10000000) != 0: # Multi-byte characters
-      var r: Rune
-      let byteCount = reader.validRune(r, c)
-      if byteCount != 0:
-        reader.unsafeNextBy(byteCount)
-      else: # Not a valid rune
-        reader.error("Found invalid UTF-8 character.")
-    else:
-      # When the high bit is not set this is a single-byte character (ASCII)
-      case c
-      of '"':
-        break
-      of '\\':
-        if not reader.hasNext(offset = 1):
-          reader.parseError("Expected escaped character but end reached.")
-        ifCopy:
-          finishCopy()
-        reader.unsafeNext() # first \
-        let c = reader.unsafePeek()
-        reader.unsafeNext() # escape character
-        case c
-        of '"', '\\', '/': v.add(c)
-        of 'b': v.add '\b'
-        of 'f': v.add '\f'
-        of 'n': v.add '\n'
-        of 'r': v.add '\r'
-        of 't': v.add '\t'
-        of 'u':
-          v.add(Rune(parseUnicodeEscape(format, reader)))
-          continue
-        of 'x':
-          v.add(char(parseByte(reader)))
-          continue
-        else:
-          v.add(c)
+  try:
+    var c: char
+    while reader.peek(c):
+      if format.forceUtf8Strings and (cast[uint8](c) and 0b10000000) != 0: # Multi-byte characters
+        var r: Rune
+        let byteCount = reader.validRune(r, c)
+        if byteCount != 0:
+          reader.unsafeNextBy(byteCount)
+        else: # Not a valid rune
+          reader.error("Found invalid UTF-8 character.")
       else:
-        reader.unsafeNext()
-        ifCopy:
-          enterCopy()
-        do: # else for ifCopy
-          v.add c
-  ifCopy:
-    finishCopy()
+        # When the high bit is not set this is a single-byte character (ASCII)
+        case c
+        of '"':
+          break
+        of '\\':
+          if not reader.hasNext(offset = 1):
+            reader.parseError("Expected escaped character but end reached.")
+          ifCopy:
+            finishCopy()
+          reader.unsafeNext() # first \
+          let c = reader.unsafePeek()
+          reader.unsafeNext() # escape character
+          case c
+          of '"', '\\', '/': v.add(c)
+          of 'b': v.add '\b'
+          of 'f': v.add '\f'
+          of 'n': v.add '\n'
+          of 'r': v.add '\r'
+          of 't': v.add '\t'
+          of 'u':
+            v.add(Rune(parseUnicodeEscape(format, reader)))
+            continue
+          of 'x':
+            v.add(char(parseByte(reader)))
+            continue
+          else:
+            v.add(c)
+        else:
+          reader.unsafeNext()
+          ifCopy:
+            enterCopy()
+          do: # else for ifCopy
+            v.add c
+  finally:
+    ifCopy:
+      finishCopy()
 
   eatChar(reader, '"')
 

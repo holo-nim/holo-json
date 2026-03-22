@@ -1,6 +1,14 @@
 const holoJsonLineColumn* {.booldefine.} = true
   ## enables/disables line column tracking by default, has very little impact on performance
 
+const holoJsonBatchStringAdd* {.booldefine.} = not defined(js)
+  ## adds/copies a range of string characters to read/dump output all at once whenever possible,
+  ## should be faster due to single use of `setLen` but this can also make it slower on JS
+
+const holoJsonStringCopyMem* {.booldefine.} = true
+  ## uses `copyMem` to copy batched string characters whenever available,
+  ## given `holoJsonBatchStringAdd` is enabled
+
 type
   JsonReadFormat* = object
     handleUtf16*: bool = true

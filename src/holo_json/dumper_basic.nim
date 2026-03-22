@@ -269,15 +269,12 @@ const hex = [
   '0', '1', '2', '3', '4', '5', '6', '7',
   '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
 
-const holoJsonDumpStrCopyMem* {.booldefine.} = not defined(js)
-  ## optimization copied from jsony
-
 proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
   writer.write '"'
 
   var i = 0
 
-  const compileCopy = holoJsonDumpStrCopyMem
+  const compileCopy = holoJsonBatchStringAdd
   template ifCopy(body) =
     when compileCopy:
       when nimvm:
@@ -311,7 +308,7 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
             for p in 0 ..< numBytes:
               writer.buffer[sLen + p] = v[copyStart + p]
           else:
-            when defined(js) or defined(nimscript):
+            when not holoJsonStringCopyMem or defined(js) or defined(nimscript):
               for p in 0 ..< numBytes:
                 writer.buffer[sLen + p] = v[copyStart + p]
             else:
@@ -319,85 +316,87 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: string) =
           writer.consumeBuffer()
         inCopy = false
 
-  while i < v.len:
-    let c = v[i]
-    if (cast[uint8](c) and 0b10000000) == 0:
-      # When the high bit is not set this is a single-byte character (ASCII)
-      # Does this character need escaping?
-      if c < 32.char or c == '\\' or c == '"':
-        ifCopy:
-          finishCopy()
-        case c
-        of '\\': writer.write r"\\"
-        of '\b': writer.write r"\b"
-        of '\f': writer.write r"\f"
-        of '\n': writer.write r"\n"
-        of '\r': writer.write r"\r"
-        of '\t': writer.write r"\t"
-        of '\v':
-          if format.useXEscape:
-            writer.write r"\x0b"
+  try:
+    while i < v.len:
+      let c = v[i]
+      if (cast[uint8](c) and 0b10000000) == 0:
+        # When the high bit is not set this is a single-byte character (ASCII)
+        # Does this character need escaping?
+        if c < 32.char or c == '\\' or c == '"':
+          ifCopy:
+            finishCopy()
+          case c
+          of '\\': writer.write r"\\"
+          of '\b': writer.write r"\b"
+          of '\f': writer.write r"\f"
+          of '\n': writer.write r"\n"
+          of '\r': writer.write r"\r"
+          of '\t': writer.write r"\t"
+          of '\v':
+            if format.useXEscape:
+              writer.write r"\x0b"
+            else:
+              writer.write r"\u000b"
+          of '"': writer.write r"\"""
           else:
-            writer.write r"\u000b"
-        of '"': writer.write r"\"""
-        else:
-          if format.useXEscape:
-            writer.write r"\x"
-          else:
-            writer.write r"\u00"
-          writer.write hex[c.int shr 4]
-          writer.write hex[c.int and 0xf]
-      else:
-        ifCopy:
-          enterCopy()
-        do: # else for ifCopy
-          writer.write c
-      inc i
-    else: # Multi-byte characters
-      var rune: Rune
-      let r = v.validRuneAt(i, rune)
-      if format.keepUtf8:
-        if r == 0:
-          # invalid rune
-          case format.invalidUtf8
-          of EncodeInvalidUtf8:
-            ifCopy:
-              finishCopy()
             if format.useXEscape:
               writer.write r"\x"
             else:
               writer.write r"\u00"
             writer.write hex[c.int shr 4]
             writer.write hex[c.int and 0xf]
-          of ReplaceInvalidUtf8:
-            ifCopy:
-              finishCopy()
-            writer.write Rune(0xfffd)
-          of KeepInvalidUtf8:
-            ifCopy:
-              enterCopy()
-            do: # else for ifCopy
-              writer.write c
-          inc i
         else:
           ifCopy:
             enterCopy()
           do: # else for ifCopy
-            writer.write v.toOpenArray(i, i + r - 1)
-          i += r
-      else:
-        ifCopy:
-          finishCopy()
-        # XXX maybe encode full utf16?
-        if format.useXEscape:
-          writer.write r"\x"
-        else:
-          writer.write r"\u00"
-        writer.write hex[c.int shr 4]
-        writer.write hex[c.int and 0xf]
+            writer.write c
         inc i
-  ifCopy:
-    finishCopy()
+      else: # Multi-byte characters
+        var rune: Rune
+        let r = v.validRuneAt(i, rune)
+        if format.keepUtf8:
+          if r == 0:
+            # invalid rune
+            case format.invalidUtf8
+            of EncodeInvalidUtf8:
+              ifCopy:
+                finishCopy()
+              if format.useXEscape:
+                writer.write r"\x"
+              else:
+                writer.write r"\u00"
+              writer.write hex[c.int shr 4]
+              writer.write hex[c.int and 0xf]
+            of ReplaceInvalidUtf8:
+              ifCopy:
+                finishCopy()
+              writer.write Rune(0xfffd)
+            of KeepInvalidUtf8:
+              ifCopy:
+                enterCopy()
+              do: # else for ifCopy
+                writer.write c
+            inc i
+          else:
+            ifCopy:
+              enterCopy()
+            do: # else for ifCopy
+              writer.write v.toOpenArray(i, i + r - 1)
+            i += r
+        else:
+          ifCopy:
+            finishCopy()
+          # XXX maybe encode full utf16?
+          if format.useXEscape:
+            writer.write r"\x"
+          else:
+            writer.write r"\u00"
+          writer.write hex[c.int shr 4]
+          writer.write hex[c.int and 0xf]
+          inc i
+  finally:
+    ifCopy:
+      finishCopy()
 
   writer.write '"'
 
