@@ -606,11 +606,10 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
     read(format, reader, key)
     eatChar(reader, ':')
     {.cast(uncheckedAssign).}:
-      const hasRenameHook = jsonyHookCompatibility and compiles(renameHook(v, key))
-      when hasRenameHook:
+      when jsonyHookCompatibility and compiles(renameHook(v, key)):
         renameHook(v, key)
         block all:
-          for k, v in v.fieldPairs:
+          for k, v in fieldPairs(when v is ref: v[] else: v):
             if k == key or static(toSnakeCase(k)) == key:
               var v2: type(v)
               read(format, reader, v2)
