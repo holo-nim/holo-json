@@ -1,6 +1,6 @@
 ## implements reading behavior for basic types
 
-import ./common, private/objvar, holo_map/caseutils, holo_flow/holo_reader
+import ./common, holo_map/[caseutils, variants], holo_flow/holo_reader
 import std/[unicode, parseutils, typetraits, macros, importutils, tables]
 import std/strutils except format
 import std/json #from std/json import JsonNodeKind, JsonNode
@@ -606,11 +606,10 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
     read(format, reader, key)
     eatChar(reader, ':')
     {.cast(uncheckedAssign).}:
-      const hasRenameHook = jsonyHookCompatibility and compiles(renameHook(v, key))
-      when hasRenameHook:
+      when jsonyHookCompatibility and compiles(renameHook(v, key)):
         renameHook(v, key)
         block all:
-          for k, v in v.fieldPairs:
+          for k, v in fieldPairs(when v is ref: v[] else: v):
             if k == key or static(toSnakeCase(k)) == key:
               var v2: type(v)
               read(format, reader, v2)
@@ -687,42 +686,10 @@ template initObj[T](v: var T) =
     new(v)
   startObjectRead(format, reader, v)
 
-template initObjVariant[T](v: var T, discrim) =
+template initObjVariant[T](v: var T, discrimField, discrimValue) =
   mixin startObjectRead
-  objvar.new(v, discrim)
+  v = T(`discrimField`: `discrimValue`)
   startObjectRead(format, reader, v)
-
-macro genDiscrimCase(fields: static openArray[(string, FieldMapping)], key: string, v: typed): untyped =
-  let discrim = $discriminator(v)
-  result = newNimNode(nnkCaseStmt, v)
-  result.add key
-  for fieldName, options in fields.items:
-    if fieldName == discrim:
-      var branch = newTree(nnkOfBranch)
-      let inputNames = getInputNames(fieldName, options, jsonDefaultInputNames)
-      for name in inputNames:
-        branch.add newLit(name)
-      #branch.add crudeReplaceIdent(body, "field", newDotExpr(copy v, ident fieldName))
-      let fieldIdent = ident fieldName
-      let readName = bindSym("read", brForceOpen)
-      when false:
-        branch.add newStmtList(
-          newCall(ident"read", ident"format", ident"reader", newDotExpr(copy v, fieldIdent)),
-          newCall(ident"initObjVariant", copy v, newDotExpr(copy v, copy fieldIdent)),
-          newTree(nnkBreakStmt, newEmptyNode())
-        )
-      else:
-        branch.add quote do:
-          # XXX compiler thinks this is immutable:
-          #read(reader, `v`.`fieldIdent`)
-          var v2: typeof(`v`.`fieldIdent`)
-          `readName`(format, reader, v2)
-          initObjVariant(`v`, v2)
-          break
-      result.add branch
-  if result.len == 1:
-    result = newTree(nnkDiscardStmt, newEmptyNode())
-    error("could not find discriminator field " & discrim & " in object type somehow", v)
 
 proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader, v: var T) =
   ## Parse an object or ref object.
@@ -735,10 +702,10 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
       v = nil # changed from original jsony, where it does nothing
       return
   eatChar(reader, '{')
-  when not v.isObjectVariant:
+  when not hasVariants(T):
     initObj(v)
   else:
-    # Try looking for the discriminatorFieldName, then parse as normal object.
+    # scan for field names belonging to a variant branch, or the variant field itself
     eatSpace(reader)
     reader.lockBuffer()
     var saveI = reader.bufferPos
@@ -749,14 +716,25 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
         eatChar(reader, ':')
         when jsonyHookCompatibility and compiles(renameHook(v, key)):
           renameHook(v, key)
-          if key == v.discriminatorFieldName:
-            var discriminator: type(v.discriminatorField)
-            read(format, reader, discriminator)
-            initObjVariant(v, discriminator)
-            break
+          template onVariantField(f) =
+            if key == astToStr(f):
+              var discrimValue: typeof(v.`f`)
+              read(format, reader, discrimValue)
+              initObjVariant(v, `f`, discrimValue)
+          withFirstVariantFieldName(T, onVariantField)
         else:
+          template onVariantField(f) =
+            var v2: typeof(v.`f`)
+            read(format, reader, v2)
+            initObjVariant(v, `f`, v2)
+            break
+          template onInnerField(f, vf, discrim) =
+            initObjVariant(v, `vf`, `discrim`)
+            break
           const fieldMappings = fieldMappings(v, Json)
-          genDiscrimCase(fieldMappings, key, v)
+          mapInputVariantFieldName(T, key,
+            fieldMappings, jsonDefaultInputNames,
+            onInnerField, onVariantField): discard
         discard skipValue(format, reader)
         if not reader.peekMatch('}'):
           # needs space skipped above?
