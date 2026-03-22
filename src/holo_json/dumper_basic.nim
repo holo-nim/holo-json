@@ -453,8 +453,7 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
   mixin dump
   writer.write '{'
   var i = 0
-  when false and compiles(for k, e in v.pairs: discard):
-    # XXX disabled, arbitrary keys dont work
+  when jsonyPairsObject and compiles(for k, e in v.pairs: discard):
     # Tables and table like objects.
     for k, e in v.pairs:
       if i > 0:

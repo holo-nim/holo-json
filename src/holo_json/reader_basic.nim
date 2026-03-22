@@ -747,8 +747,7 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
         var key: string
         read(format, reader, key)
         eatChar(reader, ':')
-        const hasRenameHook = jsonyHookCompatibility and compiles(renameHook(v, key))
-        when hasRenameHook:
+        when jsonyHookCompatibility and compiles(renameHook(v, key)):
           renameHook(v, key)
           if key == v.discriminatorFieldName:
             var discriminator: type(v.discriminatorField)

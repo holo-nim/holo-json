@@ -48,6 +48,10 @@ const jsonyFieldCompatibility* {.booldefine.} = false
 const jsonyIntOutput* {.booldefine.} = true
   ## uses the jsony code for dumping ints instead of just using standard library `addInt`
 
+const jsonyPairsObject* {.booldefine.} = false
+  ## enables generalized pair object (i.e. tables) output from jsony,
+  ## disabled by default since it includes non-string keys
+
 type
   RawJson* = distinct string
   JsonValueError* = object of ValueError

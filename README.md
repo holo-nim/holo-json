@@ -109,6 +109,10 @@ Not compatible with jsony's parsing/conversion behavior.
 
   One potential caveat is that this could make compile times worse but the macro code for this is not particularly complex. The `fields` magic can't be much more efficient anyway.
 
+* Using `holo-map` allows to generalize enough that this library is easier to copy for another data format,
+  and switching between other data formats and this library is easy as well.
+  Even the reader/writer types can be abstracted over thanks to the `format` argument.
+
 * Reading/dumping behavior is modularized, you can import one without the other. The default hooks for stdlib types like tables and sets are also moved to their own modules so they can be selectively not imported.
 
 ### Data handling
@@ -119,10 +123,10 @@ Not compatible with jsony's parsing/conversion behavior.
 
 ### Data representation
 
-* Object field names convert to snake case by default instead of using the original name, and only accept this snake case version rather than either snake case or the original name. Outputting snake case by default is to make the most common real world use cases more convenient, not reading the original name is to not unnecessarily complicate the generated case statements. The original jsony behavior can be brought back with `-d:jsonyFieldCompatibility`.
-  * Not the case for enums though. But enum behavior is not finished yet.
+* Object field names convert to snake case by default instead of using the original name, and only accept this snake case version rather than either snake case or the original name. Outputting snake case by default is to make the most common real world use cases more convenient, not reading the original name is to not unnecessarily complicate the generated case statements. The original jsony behavior can be brought back with `-d:jsonyFieldCompatibility`, and this behavior is represented by constants in `common.nim`.
+  * Not the case for enums though.
 * Floats support `NaN`/infinity, by default by using strings as in stdlib json, or optionally with their raw JS equivalents as in JSON5. (Nothing else from JSON5 is supported yet though.)
 * Enums allow representation as integers instead of strings via an option. Although this can be done with hooks it's nicer to be able to change what's opt in and what's opt out.
-* Some weird `null` handling is removed: Non-ref objects and strings accepted `null` and interpreted it to mean "empty", as in reading nothing. Now it is allowed only where an explicit `null` value exists (like `nil` or `None`). The old behavior might become a config option but it is hard to justify for specifically objects and strings.
 * `\x` is optionally supported for nicer byte strings (I guess if base64 isn't available).
-* The generalized `pairs` dumper for objects is removed as it causes problems when the key isn't a string, instead there is a manual `string | enum` table implementation in `dumper_stdlib` same as the read hook from the original jsony.
+* Some weird `null` handling is removed: Non-ref objects and strings accepted `null` and interpreted it to mean "empty", as in reading nothing. Now it is allowed only where an explicit `null` value exists (like `nil` or `None`). The old behavior might become a config option but it is hard to justify for specifically objects and strings.
+* The generalized `pairs` dumper for objects is removed as it causes problems when the key isn't a string, instead there is a manual `string | enum` table implementation in `dumper_stdlib` same as the read hook from the original jsony. This behavior can be brought back with `-d:jsonyPairsObject` but is not recommended.
