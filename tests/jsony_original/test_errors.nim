@@ -1,10 +1,10 @@
 import holo_json
 
-doAssertRaises(CatchableError):
+doAssertRaises(JsonValueError):
   discard "{invalid".fromJson()
 
-doAssertRaises(CatchableError):
+doAssertRaises(JsonValueError):
   discard "{a:}".fromJson()
 
-doAssertRaises(CatchableError):
+doAssertRaises(JsonValueError):
   discard "1.23.23".fromJson()
