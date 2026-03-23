@@ -415,7 +415,7 @@ proc dump*[T: enum](format: JsonDumpFormat, writer: var HoloWriter, v: T) {.inli
     template onEnumOutput(s: string) =
       writer.dumpStaticStr(s)
     when T is HasFieldMappings:
-      const fieldMappings = fieldMappings(v, Json)
+      const fieldMappings = fieldMappings(v, HoloJson)
     else:
       const fieldMappings = default(FieldMappingPairs)
     # can always use it here, however will not work with custom `$` XXX
@@ -484,7 +484,7 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
         writer.dumpKey(fName)
         format.dump(writer, f)
         inc i
-      const fieldMappings = fieldMappings(v, Json)
+      const fieldMappings = fieldMappings(v, HoloJson)
       mapFieldOutput(v, fieldMappings, jsonDefaultOutputName, onFieldOutput)
   writer.write '}'
 

@@ -59,10 +59,10 @@ type
     ## error that signifies a violation of json grammar,
     ## currently not used in all such cases
 
-import holo_map/fields
-export fields
+import holo_map/[groups, fields]
+export groups, fields
 
-const Json* = MappingGroup"json"
+const HoloJson* = MappingGroup(id: "holo-json", parents: @[Json])
 const jsonDefaultInputNames* = 
   if jsonyFieldCompatibility: @[verbatim(), snakeCase()]
   else: @[snakeCase()]

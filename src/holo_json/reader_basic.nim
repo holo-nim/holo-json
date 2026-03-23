@@ -623,7 +623,7 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
           var v2: typeof(f)
           read(format, reader, v2)
           f = v2
-        const fieldMappings = fieldMappings(v, Json)
+        const fieldMappings = fieldMappings(v, HoloJson)
         mapFieldInput(v, key, fieldMappings, jsonDefaultInputNames, onFieldInput):
           discard skipValue(format, reader)
     eatSpace(reader)
@@ -662,7 +662,7 @@ proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.
       # XXX cannot use by default since normalization is not supported yet unlike `parseEnum`
       template onEnumInput(e: T) =
         v = e
-      const fieldMappings = fieldMappings(v, Json)
+      const fieldMappings = fieldMappings(v, HoloJson)
       mapEnumFieldInput(T, strV, fieldMappings, onEnumInput)
     else:
       try:
@@ -731,7 +731,7 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
           template onInnerField(f, vf, discrim) =
             initObjVariant(v, `vf`, `discrim`)
             break
-          const fieldMappings = fieldMappings(v, Json)
+          const fieldMappings = fieldMappings(v, HoloJson)
           mapInputVariantFieldName(T, key,
             fieldMappings, jsonDefaultInputNames,
             onInnerField, onVariantField): discard
