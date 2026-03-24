@@ -242,33 +242,35 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var RawJson) {.inl
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var RawJsonValue) {.inline.} =
   v = readRawValue(format, reader)
 
+proc endError*(reader: var HoloReader, expected: string) {.inline.} =
+  reader.parseError("expected " & expected & " but end reached")
+
 const jsonUnexpectedValueErrorLength* {.intdefine.} = 100
   ## number of characters a raw unexpected value can show in an error message
   ## if negative, no maximum
   ## if zero, just gives value kind
 
-proc endError*(reader: var HoloReader, expected: string) =
-  reader.parseError("expected " & expected & " but end reached")
-
-proc valueError*(reader: var HoloReader, format: JsonReadFormat, expected: string) =
-  let got = peekRawValueSkipSpace(format, reader) # important: this can give parse errors by itself
-  var msg = "expected "
-  msg.add expected
-  msg.add " but got "
+proc valueErrorMsg(got: RawJsonValue, expected: string): string =
+  result = "expected "
+  result.add expected
+  result.add " but got "
   when jsonUnexpectedValueErrorLength < 0:
-    msg.add got.raw.string
+    result.add got.raw.string
   elif jsonUnexpectedValueErrorLength == 0:
-    msg.add $got.kind
+    result.add $got.kind
   else:
     if got.raw.string.len < jsonUnexpectedValueErrorLength:
-      msg.add got.raw.string
+      result.add got.raw.string
     else:
       # copies but whatever:
-      msg.add got.raw.string.toOpenArray(0, jsonUnexpectedValueErrorLength - 1)
-      msg.add "..."
-  reader.error(msg)
+      result.add got.raw.string.toOpenArray(0, jsonUnexpectedValueErrorLength - 1)
+      result.add "..."
 
-proc unexpectedError*(reader: var HoloReader, format: JsonReadFormat, expected: string) =
+proc valueError*(reader: var HoloReader, format: JsonReadFormat, expected: string) {.inline.} =
+  let got = peekRawValueSkipSpace(format, reader) # important: this can give parse errors by itself
+  reader.error(valueErrorMsg(got, expected))
+
+proc unexpectedError*(reader: var HoloReader, format: JsonReadFormat, expected: string) {.inline.} =
   var dummy: char
   if not reader.peek(dummy):
     endError(reader, expected)
@@ -345,6 +347,7 @@ iterator readArray*(format: JsonReadFormat, reader: var HoloReader): int =
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var bool) {.inline.} =
   ## Will parse boolean true or false.
+  skipSpace(reader)
   var c: char
   if not peek(reader, c):
     reader.endError("bool value")
@@ -878,6 +881,7 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
               var discrimValue: typeof(v.`f`)
               read(format, reader, discrimValue)
               initObjVariant(v, `f`, discrimValue)
+              break
           withFirstVariantFieldName(T, onVariantField)
         else:
           template onVariantField(f) =
