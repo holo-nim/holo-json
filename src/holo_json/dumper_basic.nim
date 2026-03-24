@@ -419,7 +419,8 @@ proc dump*[T: enum](format: JsonDumpFormat, writer: var HoloWriter, v: T) {.inli
     else:
       const fieldMappings = default(FieldMappingPairs)
     # can always use it here, however will not work with custom `$` XXX
-    mapEnumFieldOutput(T, v, fieldMappings, onEnumOutput)
+    # XXX no normalizer support
+    mapEnumFieldOutput(T, v, fieldMappings, nil, onEnumOutput)
     when false:
       format.dump(writer, $v)
   of EnumOrd:
@@ -485,7 +486,8 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
         format.dump(writer, f)
         inc i
       const fieldMappings = fieldMappings(v, HoloJson)
-      mapFieldOutput(v, fieldMappings, jsonDefaultOutputName, onFieldOutput)
+      # XXX no normalizer support
+      mapFieldOutput(v, fieldMappings, nil, jsonDefaultOutputName, onFieldOutput)
   writer.write '}'
 
 proc dump*[N, T](format: JsonDumpFormat, writer: var HoloWriter, v: array[N, t[T]]) =
