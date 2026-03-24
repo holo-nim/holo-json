@@ -651,7 +651,8 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
           read(format, reader, v2)
           f = v2
         const fieldMappings = fieldMappings(v, HoloJson)
-        mapFieldInput(v, key, fieldMappings, jsonDefaultInputNames, onFieldInput):
+        # XXX no normalizer support
+        mapFieldInput(v, key, fieldMappings, nil, jsonDefaultInputNames, onFieldInput):
           discard skipValue(format, reader)
     skipSpace(reader)
     if reader.nextMatch(','):
@@ -690,7 +691,8 @@ proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.
       template onEnumInput(e: T) =
         v = e
       const fieldMappings = fieldMappings(v, HoloJson)
-      mapEnumFieldInput(T, strV, fieldMappings, onEnumInput)
+      # XXX no normalizer support
+      mapEnumFieldInput(T, strV, fieldMappings, nil, onEnumInput)
     else:
       try:
         v = parseEnum[T](strV)
@@ -759,8 +761,9 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
             initObjVariant(v, `vf`, `discrim`)
             break
           const fieldMappings = fieldMappings(v, HoloJson)
+          # XXX no normalizer support
           mapInputVariantFieldName(T, key,
-            fieldMappings, jsonDefaultInputNames,
+            fieldMappings, nil, jsonDefaultInputNames,
             onInnerField, onVariantField): discard
         discard skipValue(format, reader)
         if not reader.peekMatch('}'):
