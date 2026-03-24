@@ -28,10 +28,8 @@ proc finishArrayDump*(format: JsonDumpFormat, writer: var HoloWriter, arr: var A
   writer.write ']'
 
 proc startArrayItem*(format: JsonDumpFormat, writer: var HoloWriter, arr: var ArrayDump) {.inline.} =
-  if arr.needsComma:
-    writer.write ','
-  else:
-    arr.needsComma = true
+  if arr.needsComma: writer.write ','
+  else: arr.needsComma = true
 
 proc finishArrayItem*(format: JsonDumpFormat, writer: var HoloWriter, arr: var ArrayDump) {.inline.} =
   discard
@@ -54,10 +52,8 @@ proc finishObjectDump*(format: JsonDumpFormat, writer: var HoloWriter, arr: var 
   writer.write '}'
 
 proc startObjectField*(format: JsonDumpFormat, writer: var HoloWriter, arr: var ObjectDump, name: string, raw = false) {.inline.} =
-  if arr.needsComma:
-    writer.write ','
-  else:
-    arr.needsComma = true
+  if arr.needsComma: writer.write ','
+  else: arr.needsComma = true
   if raw:
     writer.write name
   else:
@@ -397,12 +393,11 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: char) =
 proc dump*[T: tuple](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
   mixin dump
   writer.write '['
-  var i = 0
+  var needsComma = false
   for _, e in v.fieldPairs:
-    if i > 0:
-      writer.write ','
+    if needsComma: writer.write ','
+    else: needsComma = true
     format.dump(writer, e)
-    inc i
   writer.write ']'
 
 template dumpStaticStr(writer: var HoloWriter, s: static string) =
@@ -429,12 +424,11 @@ proc dump*[T: enum](format: JsonDumpFormat, writer: var HoloWriter, v: T) {.inli
 proc dump*[N, T](format: JsonDumpFormat, writer: var HoloWriter, v: array[N, T]) =
   mixin dump
   writer.write '['
-  var i = 0
+  var needsComma = false
   for e in v:
-    if i != 0:
-      writer.write ','
+    if needsComma: writer.write ','
+    else: needsComma = true
     format.dump(writer, e)
-    inc i
   writer.write ']'
 
 proc dump*[T](format: JsonDumpFormat, writer: var HoloWriter, v: seq[T]) =
@@ -453,16 +447,15 @@ template dumpKey(writer: var HoloWriter, v: static string) =
 proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
   mixin dump
   writer.write '{'
-  var i = 0
+  var needsComma = false
   when jsonyPairsObject and compiles(for k, e in v.pairs: discard):
     # Tables and table like objects.
     for k, e in v.pairs:
-      if i > 0:
-        writer.write ','
+      if needsComma: writer.write ','
+      else: needsComma = true
       format.dump(writer, k)
       writer.write ':'
       format.dump(writer, e)
-      inc i
   else:
     # Normal objects.
     when jsonyHookCompatibility and (compiles do:
@@ -473,18 +466,16 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
           discard
         else:
           # original jsony does not have rename hook here
-          if i > 0:
-            writer.write ','
+          if needsComma: writer.write ','
+          else: needsComma = true
           writer.dumpKey(k)
           format.dump(writer, e)
-          inc i
     else:
       template onFieldOutput(f, fName) =
-        if i > 0:
-          writer.write ','
+        if needsComma: writer.write ','
+        else: needsComma = true
         writer.dumpKey(fName)
         format.dump(writer, f)
-        inc i
       const fieldMappings = fieldMappings(v, HoloJson)
       # XXX no normalizer support
       mapFieldOutput(v, fieldMappings, nil, jsonDefaultOutputName, onFieldOutput)
@@ -493,15 +484,14 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
 proc dump*[N, T](format: JsonDumpFormat, writer: var HoloWriter, v: array[N, t[T]]) =
   mixin dump
   writer.write '{'
-  var i = 0
+  var needsComma = false
   # Normal objects.
   for (k, e) in v:
-    if i > 0:
-      writer.write ','
+    if needsComma: writer.write ','
+    else: needsComma = true
     format.dump(writer, k)
     writer.write ':'
     format.dump(writer, e)
-    inc i
   writer.write '}'
 
 proc dump*[T](format: JsonDumpFormat, writer: var HoloWriter, v: ref T) {.inline.} =

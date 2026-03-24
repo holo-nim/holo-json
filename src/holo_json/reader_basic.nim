@@ -428,7 +428,8 @@ proc readEnumString*[T: enum](format: JsonReadFormat, reader: var HoloReader, _:
       result = e
     const fieldMappings = fieldMappings(result, HoloJson)
     # XXX no normalizer support
-    mapEnumFieldInput(T, strV, fieldMappings, nil, onEnumInput) # XXX needs else for errors
+    mapEnumFieldInput(T, strV, fieldMappings, nil, onEnumInput):
+      reader.error("could not parse enum of type " & $T & " from string: " & $strV)
   else:
     try:
       result = parseEnum[T](strV)
