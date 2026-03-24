@@ -32,6 +32,69 @@ template skipSpace*(reader: var HoloReader) =
     if c notin Whitespace:
       break
 
+type
+  JsonValueKind* = enum
+    JsonInvalid
+    JsonObject
+    JsonArray
+    JsonString
+    JsonNumber
+    JsonRawNan, JsonRawInf, JsonRawNegInf
+    JsonTrue, JsonFalse
+    JsonNull
+  RawJsonValue* = object
+    kind*: JsonValueKind
+    raw*: RawJson
+
+proc peekRawKind*(format: JsonReadFormat, reader: var HoloReader): JsonValueKind =
+  ## guesses which kind the next object is, assumes spaces are skipped
+  ## not guaranteed to be accurate, all numbers are assumed float
+  let start = reader.peekOrZero()
+  result = JsonInvalid
+  case start
+  of '{':
+    result = JsonObject
+  of '[':
+    result = JsonArray
+  of '"':
+    result = JsonString
+  of '-':
+    if format.rawJsNanInf and
+        reader.peekMatch('I', offset = 1) and
+        reader.peekMatch("-Infinity"):
+      result = JsonRawNegInf
+    else:
+      result = JsonNumber
+  of '+', '0'..'9':
+    result = JsonNumber
+  of 'n':
+    if reader.peekMatch("null"):
+      result = JsonNull
+  of 't':
+    if reader.peekMatch("true"):
+      result = JsonTrue
+  of 'f':
+    if reader.peekMatch("false"):
+      result = JsonFalse
+  of 'N':
+    if format.rawJsNanInf and reader.peekMatch("NaN"):
+      result = JsonRawNan
+  of 'I':
+    if format.rawJsNanInf and reader.peekMatch("Infinity"):
+      result = JsonRawInf
+  else:
+    result = JsonInvalid
+  if result == JsonInvalid:
+    var msg = "unknown value starting with character "
+    msg.addQuoted(start)
+    reader.parseError(msg)
+
+proc peekRawKindSkipSpace*(format: JsonReadFormat, reader: var HoloReader): JsonValueKind {.inline.} =
+  ## guesses which kind the next object is, skips spaces
+  ## not guaranteed to be accurate, all numbers are assumed float
+  skipSpace(reader)
+  result = peekRawKind(format, reader)
+
 proc skipChar*(reader: var HoloReader, c: char) {.inline.} =
   ## Will consume space before and then the character `c`.
   ## Will raise a parsing error if `c` is not found.
@@ -42,16 +105,185 @@ proc skipChar*(reader: var HoloReader, c: char) {.inline.} =
   elif c != c2:
     reader.parseError("Expected " & c & " but got " & c2 & " instead.")
 
-proc expectChar*(reader: var HoloReader, c: char) {.inline.} =
+proc skipNumber*(format: JsonReadFormat, reader: var HoloReader): int =
+  ## returns start position in buffer
+  result = -1
+  let start = reader.bufferPos
+  block fullFloat:
+    block signPart:
+      var sign: char
+      if reader.nextMatch({'-', '+'}, sign):
+        discard
+    block integerPart:
+      var hasDigit = false
+      for c in reader.peekNext():
+        case c
+        of '0'..'9':
+          hasDigit = true
+        else: break
+      if not hasDigit:
+        break fullFloat
+    block decimalPoint:
+      if reader.peekMatch('.') and reader.peekMatch({'0'..'9'}, offset = 1):
+        reader.unsafeNext()
+        for c in reader.peekNext():
+          case c
+          of '0'..'9': discard
+          else: break
+    block exponent:
+      var hasSign = false
+      if reader.peekMatch({'e', 'E'}):
+        var digitOffset = 1
+        hasSign = reader.peekMatch({'+', '-'}, offset = 1)
+        if hasSign:
+          inc digitOffset
+        if reader.peekMatch({'0'..'9'}, offset = digitOffset):
+          var c: char
+          let firstSkip = reader.next(c)
+          assert firstSkip
+          if hasSign:
+            let secondSkip = reader.next(c)
+            assert secondSkip
+          for c in reader.peekNext():
+            case c
+            of '0'..'9': discard
+            else: break
+  if reader.bufferPos != start:
+    result = start + 1
+
+proc skipValue*(format: JsonReadFormat, reader: var HoloReader): int =
+  ## Used to skip values of extra fields, or wrongly typed values for errors.
+  ## returns start position in buffer
+  result = -1
+  skipSpace(reader)
+  case peekRawKind(format, reader)
+  of JsonInvalid:
+    result = -1
+  of JsonObject:
+    unsafeNext(reader)
+    result = reader.bufferPos
+    while reader.hasNext():
+      skipSpace(reader)
+      if reader.peekMatch('}'):
+        break
+      discard skipValue(format, reader)
+      skipChar(reader, ':')
+      discard skipValue(format, reader)
+      skipSpace(reader)
+      if reader.nextMatch(','):
+        discard
+    skipChar(reader, '}')
+  of JsonArray:
+    unsafeNext(reader)
+    result = reader.bufferPos
+    while reader.hasNext():
+      skipSpace(reader)
+      if reader.peekMatch(']'):
+        break
+      discard skipValue(format, reader)
+      skipSpace(reader)
+      if reader.nextMatch(','):
+        discard
+    skipChar(reader, ']')
+  of JsonString:
+    result = reader.bufferPos + 1
+    var str: string
+    read(format, reader, str)
+  of JsonNumber:
+    result = skipNumber(format, reader)
+  of JsonNull:
+    result = reader.bufferPos + 1
+    unsafeNextBy(reader, "null".len)
+  of JsonTrue:
+    result = reader.bufferPos + 1
+    unsafeNextBy(reader, "true".len)
+  of JsonFalse:
+    result = reader.bufferPos + 1
+    unsafeNextBy(reader, "false".len)
+  of JsonRawNan:
+    result = reader.bufferPos + 1
+    unsafeNextBy(reader, "NaN".len)
+  of JsonRawInf:
+    result = reader.bufferPos + 1
+    unsafeNextBy(reader, "Infinity".len)
+  of JsonRawNegInf:
+    result = reader.bufferPos + 1
+    unsafeNextBy(reader, "-Infinity".len)
+
+proc readRawValue*(format: JsonReadFormat, reader: var HoloReader): RawJsonValue =
+  reader.lockBuffer()
+  try:
+    let kind = peekRawKind(format, reader)
+    let firstPos = skipValue(format, reader)
+    result = RawJsonValue(kind: kind, raw: reader.buffer[firstPos .. reader.bufferPos].RawJson)
+  finally:
+    reader.unlockBuffer()
+
+proc peekRawValue*(format: JsonReadFormat, reader: var HoloReader): RawJsonValue =
+  ## reads a full raw json value, relatively inefficient and mostly meant for errors
+  let (savedPos, savedLine, savedCol) = (reader.bufferPos, reader.line, reader.column)
+  reader.lockBuffer()
+  try:
+    let kind = peekRawKind(format, reader)
+    let firstPos = skipValue(format, reader)
+    result = RawJsonValue(kind: kind, raw: reader.buffer[firstPos .. reader.bufferPos].RawJson)
+  finally:
+    reader.unlockBuffer()
+    (reader.bufferPos, reader.line, reader.column) = (savedPos, savedLine, savedCol)
+
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var RawJson) {.inline.} =
+  reader.lockBuffer()
+  try:
+    let start = skipValue(format, reader)
+    v = reader.buffer[start .. reader.bufferPos].RawJson
+  finally:
+    reader.unlockBuffer()
+
+const jsonUnexpectedValueErrorLength* {.intdefine.} = 100
+  ## number of characters a raw unexpected value can show in an error message
+  ## if negative, no maximum
+  ## if zero, just gives value kind
+
+proc endError*(reader: var HoloReader, expected: string) =
+  reader.parseError("expected " & expected & " but end reached")
+
+proc valueError*(reader: var HoloReader, format: JsonReadFormat, expected: string) =
+  let got = peekRawValue(format, reader) # important: this can give parse errors by itself
+  var msg = "expected "
+  msg.add expected
+  msg.add " but got "
+  when jsonUnexpectedValueErrorLength < 0:
+    msg.add got.raw.string
+  elif jsonUnexpectedValueErrorLength == 0:
+    msg.add $got.kind
+  else:
+    if got.raw.string.len < jsonUnexpectedValueErrorLength:
+      msg.add got.raw.string
+    else:
+      # copies but whatever:
+      msg.add got.raw.string[0 ..< jsonUnexpectedValueErrorLength]
+      msg.add "..."
+  reader.error(msg)
+
+proc unexpectedError*(reader: var HoloReader, format: JsonReadFormat, expected: string) =
+  var dummy: char
+  if not reader.peek(dummy):
+    endError(reader, expected)
+  else:
+    valueError(reader, format, expected)
+
+proc expectChar*(format: JsonReadFormat, reader: var HoloReader, c: char) {.inline.} =
   ## Will consume space before and then the character `c`.
   ## Will raise a value error if `c` is not found,
   ## and a parse error if the end is reached.
   skipSpace(reader)
   var c2: char
-  if not reader.next(c2):
-    reader.parseError("Expected " & c & " but end reached.")
+  if not reader.peek(c2):
+    reader.endError("character ' " & c & "'")
   elif c != c2:
-    reader.error("Expected " & c & " but got " & c2 & " instead.")
+    reader.valueError(format, "character '" & $c & "'")
+  else:
+    reader.unsafeNext()
 
 proc parseSymbol*(reader: var HoloReader): string =
   ## Will read a symbol and return it.
@@ -80,7 +312,7 @@ iterator readObjectFields*(format: JsonReadFormat, reader: var HoloReader): stri
       discard
 
 iterator readObject*(format: JsonReadFormat, reader: var HoloReader): string =
-  expectChar(reader, '{')
+  expectChar(format, reader, '{')
   for name in readObjectFields(format, reader):
     yield name
   skipChar(reader, '}')
@@ -103,61 +335,29 @@ iterator readArrayItems*(format: JsonReadFormat, reader: var HoloReader, start =
     inc i
 
 iterator readArray*(format: JsonReadFormat, reader: var HoloReader): int =
-  expectChar(reader, '[')
+  expectChar(format, reader, '[')
   for i in readArrayItems(format, reader):
     yield i
   skipChar(reader, ']')
 
-proc peekRawKind*(format: JsonReadFormat, reader: var HoloReader): JsonNodeKind =
-  ## guesses which kind the next object is, assumes spaces are skipped
-  ## not guaranteed to be accurate, all numbers are assumed float
-  let start = reader.peekOrZero()
-  case start
-  of '{':
-    result = JObject
-  of '[':
-    result = JArray
-  of '"':
-    result = JString
-  of '-', '+', '0'..'9':
-    result = JFloat # all numbers float?
-  else:
-    if reader.peekMatch("true") or reader.peekMatch("false"):
-      result = JBool
-    elif reader.peekMatch("null"):
-      result = JNull
-    else:
-      # XXX nan inf
-      var msg = "unknown value starting with character "
-      msg.addQuoted(start)
-      reader.parseError(msg)
-
-proc peekRawKindSkipSpace*(format: JsonReadFormat, reader: var HoloReader): JsonNodeKind {.inline.} =
-  ## guesses which kind the next object is, skips spaces
-  ## not guaranteed to be accurate, all numbers are assumed float
-  skipSpace(reader)
-  result = peekRawKind(format, reader)
-
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var bool) {.inline.} =
   ## Will parse boolean true or false.
-  when nimvm:
-    # XXX either should be fine but test
-    case parseSymbol(reader)
-    of "true":
-      v = true
-    of "false":
+  var c: char
+  if not peek(reader, c):
+    reader.endError("bool value")
+  case c
+  of 'f':
+    if reader.nextMatch("false"):
       v = false
     else:
-      reader.error("Boolean true or false expected.")
-  else:
-    # Its faster to do char by char scan:
-    skipSpace(reader)
+      reader.valueError(format, "false")
+  of 't':
     if reader.nextMatch("true"):
-      v = true
-    elif reader.nextMatch("false"):
       v = false
     else:
-      reader.error("Boolean true or false expected.")
+      reader.valueError(format, "true")
+  else:
+    reader.valueError(format, "bool value")
 
 template uintImpl() =
   #when nimvm: v = type(v)(parseBiggestUInt(parseSymbol(reader)))
@@ -187,7 +387,7 @@ template uintImpl() =
     else:
       break
   if not gotChar:
-    reader.error("Number expected.")
+    reader.unexpectedError(format, "number of type " & $typeof(v))
   when v isnot uint64:
     if v2 > UintImpl(high(typeof(v))):
       reader.error("got uint value: " & $v2 & " > max of " & $typeof(v) & ": " & $high(typeof(v)))
@@ -270,7 +470,7 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var float) =
     elif reader.nextMatch("\"-inf\""):
       v = NegInf
     else:
-      reader.error("invalid float string")
+      reader.unexpectedError(format, "float string")
     return
   if format.rawJsNanInf:
     if reader.nextMatch("NaN"):
@@ -283,57 +483,18 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var float) =
       v = NegInf
       return
   # build float string based on acceptable characters:
-  var s = ""
-  block fullFloat:
-    block signPart:
-      var sign: char
-      if reader.nextMatch({'-', '+'}, sign):
-        s.add sign
-    block integerPart:
-      var hasDigit = false
-      for c in reader.peekNext():
-        case c
-        of '0'..'9':
-          hasDigit = true
-          s.add c
-        else: break
-      if not hasDigit:
-        s = ""
-        break fullFloat
-    block decimalPoint:
-      if reader.peekMatch('.') and reader.peekMatch({'0'..'9'}, offset = 1):
-        s.add '.'
-        reader.unsafeNext()
-        for c in reader.peekNext():
-          case c
-          of '0'..'9': s.add c
-          else: break
-    block exponent:
-      var hasSign = false
-      if reader.peekMatch({'e', 'E'}):
-        var digitOffset = 1
-        hasSign = reader.peekMatch({'+', '-'}, offset = 1)
-        if hasSign:
-          inc digitOffset
-        if reader.peekMatch({'0'..'9'}, offset = digitOffset):
-          var c: char
-          doAssert reader.next(c)
-          s.add c # e/E
-          if hasSign:
-            doAssert reader.next(c)
-            s.add c
-          for c in reader.peekNext():
-            case c
-            of '0'..'9': s.add c
-            else: break
-  if s.len == 0:
-    reader.error("Failed to parse a float.")
-  var i = 0
-  var f: float
-  let chars = parseutils.parseFloat(s, f, i)
-  if chars == 0 or chars < s.len:
-    reader.error("Failed to parse a float.")
-  v = f
+  reader.lockBuffer()
+  try:
+    let firstPos = skipNumber(format, reader)
+    if firstPos < 0:
+      reader.unexpectedError(format, "float")
+    var i = firstPos
+    var f: float
+    let chars = parseutils.parseFloat(reader.buffer, f, i)
+    assert firstPos + chars == reader.bufferPos
+    v = f
+  finally:
+    reader.unlockBuffer()
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var float32) {.inline.} =
   ## Will parse floats.
@@ -440,7 +601,7 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) =
     if reader.nextMatch("null"):
       return
 
-  expectChar(reader, '"')
+  expectChar(format, reader, '"')
 
   const doCopy = holoJsonBatchStringAdd
 
@@ -539,7 +700,7 @@ proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var seq[T]) =
 proc read*[T: array](format: JsonReadFormat, reader: var HoloReader, v: var T) =
   mixin read
   skipSpace(reader)
-  expectChar(reader, '[')
+  expectChar(format, reader, '[')
   var i = 0
   for value in v.mitems:
     inc i
@@ -567,43 +728,6 @@ proc read*[T: not object](format: JsonReadFormat, reader: var HoloReader, v: var
     return
   new(v)
   read(format, reader, v[])
-
-proc skipValue*(format: JsonReadFormat, reader: var HoloReader): int =
-  ## Used to skip values of extra fields.
-  ## returns start position in buffer
-  result = -1
-  skipSpace(reader)
-  if reader.nextMatch('{'):
-    result = reader.bufferPos
-    while reader.hasNext():
-      skipSpace(reader)
-      if reader.peekMatch('}'):
-        break
-      discard skipValue(format, reader)
-      skipChar(reader, ':')
-      discard skipValue(format, reader)
-      skipSpace(reader)
-      if reader.nextMatch(','):
-        discard
-    skipChar(reader, '}')
-  elif reader.nextMatch('['):
-    result = reader.bufferPos
-    while reader.hasNext():
-      skipSpace(reader)
-      if reader.peekMatch(']'):
-        break
-      discard skipValue(format, reader)
-      skipSpace(reader)
-      if reader.nextMatch(','):
-        discard
-    skipChar(reader, ']')
-  elif reader.peekMatch('"'):
-    result = reader.bufferPos + 1
-    var str: string
-    read(format, reader, str)
-  else:
-    result = reader.bufferPos + 1
-    discard parseSymbol(reader)
 
 proc crudeReplaceIdent(n: NimNode, name: string, val: NimNode): NimNode =
   if n.kind in {nnkIdent, nnkAccQuoted, nnkSym, nnkOpenSymChoice, nnkClosedSymChoice}:
@@ -670,7 +794,7 @@ proc read*[T: tuple](format: JsonReadFormat, reader: var HoloReader, v: var T) =
       parseObjectInner(format, reader, v)
       skipChar(reader, '}')
       return
-  expectChar(reader, '[')
+  expectChar(format, reader, '[')
   for name, value in v.fieldPairs:
     skipSpace(reader)
     read(format, reader, value)
@@ -692,18 +816,19 @@ proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.
         v = e
       const fieldMappings = fieldMappings(v, HoloJson)
       # XXX no normalizer support
-      mapEnumFieldInput(T, strV, fieldMappings, nil, onEnumInput)
+      mapEnumFieldInput(T, strV, fieldMappings, nil, onEnumInput) # XXX needs else for errors
     else:
       try:
         v = parseEnum[T](strV)
-      except:
-        reader.error("Can't parse enum.")
+      except ValueError:
+        reader.error("Can't parse enum " & $T & ", got string: " & $strV)
+  elif reader.peekMatch({'-', '+', '0'..'9'}):
+    # XXX custom high/low for parsing integers (uintImpl)
+    var integer: int
+    read(format, reader, integer)
+    v = T(integer) # XXX maybe case statement here
   else:
-    try:
-      strV = parseSymbol(reader)
-      v = T(parseInt(strV))
-    except:
-      reader.error("Can't parse enum.")
+    reader.unexpectedError("enum value of type " & $T)
 
 proc startObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   ## hook called into when an object/ref object/named tuple are about to read their fields
@@ -730,14 +855,14 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
     if reader.nextMatch("null"):
       v = nil # changed from original jsony, where it does nothing
       return
-  expectChar(reader, '{')
+  expectChar(format, reader, '{')
   when not hasVariants(T):
     initObj(v)
   else:
     # scan for field names belonging to a variant branch, or the variant field itself
     skipSpace(reader)
     reader.lockBuffer()
-    var saveI = reader.bufferPos
+    let (savedPos, savedLine, savedCol) = (reader.bufferPos, reader.line, reader.column)
     try:
       while reader.hasNext():
         var key: string
@@ -773,7 +898,7 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
           initObj(v)
           break
     finally:
-      reader.bufferPos = saveI
+      (reader.bufferPos, reader.line, reader.column) = (savedPos, savedLine, savedCol)
       reader.unlockBuffer()
   parseObjectInner(format, reader, v)
   skipChar(reader, '}')
@@ -785,48 +910,64 @@ proc read*[T: distinct](format: JsonReadFormat, reader: var HoloReader, v: var T
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode) =
   ## Parses a regular json node.
   skipSpace(reader)
-  if reader.peekMatch('{'):
+  let kind = peekRawKind(format, reader)
+  case kind
+  of JsonInvalid:
+    reader.unexpectedError(format, "json value")
+  of JsonObject:
     v = newJObject()
     for k in readObject(format, reader):
       var e: JsonNode
       read(format, reader, e)
       v[k] = e
-  elif reader.peekMatch('['):
+  of JsonArray:
     v = newJArray()
     for i in readArray(format, reader):
       var e: JsonNode
       read(format, reader, e)
       v.add(e)
-  elif reader.peekMatch('"'):
+  of JsonString:
     var str: string
     read(format, reader, str)
     v = newJString(str)
-  else:
-    var data = parseSymbol(reader)
-    if data == "null":
-      v = newJNull()
-    elif data == "true":
-      v = newJBool(true)
-    elif data == "false":
-      v = newJBool(false)
-    elif data.len > 0 and data[0] in {'0'..'9', '-', '+'}:
-      try:
-        v = newJInt(parseInt(data))
-      except ValueError:
-        try:
-          v = newJFloat(parseFloat(data))
-        except ValueError:
-          reader.error("Invalid number.")
-    else:
-      reader.error("Unexpected.")
-
-proc read*(format: JsonReadFormat, reader: var HoloReader, v: var RawJson) {.inline.} =
-  reader.lockBuffer()
-  try:
-    let start = skipValue(format, reader)
-    v = reader.buffer[start .. reader.bufferPos].RawJson
-  finally:
-    reader.unlockBuffer()
+  of JsonNull:
+    unsafeNextBy(reader, "null".len)
+    v = newJNull()
+  of JsonTrue:
+    unsafeNextBy(reader, "true".len)
+    v = newJBool(true)
+  of JsonFalse:
+    unsafeNextBy(reader, "false".len)
+    v = newJBool(false)
+  of JsonRawNan:
+    unsafeNextBy(reader, "NaN".len)
+    v = newJFloat(NaN)
+  of JsonRawInf:
+    unsafeNextBy(reader, "Infinity".len)
+    v = newJFloat(Inf)
+  of JsonRawNegInf:
+    unsafeNextBy(reader, "-Infinity".len)
+    v = newJFloat(NegInf)
+  of JsonNumber:
+    reader.lockBuffer()
+    try:
+      let firstPos = skipNumber(format, reader)
+      if firstPos < 0:
+        reader.unexpectedError(format, "number value")
+      var i = firstPos
+      var integer: BiggestInt
+      var chars = parseutils.parseBiggestInt(reader.buffer, integer, i)
+      if firstPos + chars < reader.bufferPos:
+        i = firstPos
+        var f: float
+        chars = parseutils.parseFloat(reader.buffer, f, i)
+        assert firstPos + chars == reader.bufferPos
+        v = newJFloat(f)
+      else:
+        assert firstPos + chars == reader.bufferPos
+        v = newJInt(integer)
+    finally:
+      reader.unlockBuffer()
 
 proc readJson*[T](reader: var HoloReader, v: var T) {.inline.} =
   read(JsonReadFormat(), reader, v)

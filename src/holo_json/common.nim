@@ -54,8 +54,9 @@ const jsonyPairsObject* {.booldefine.} = false
 
 type
   RawJson* = distinct string
-  JsonValueError* = object of ValueError
-  JsonParseError* = object of CatchableError
+  JsonError* = object of ValueError
+  JsonValueError* = object of JsonError
+  JsonParseError* = object of JsonError
     ## error that signifies a violation of json grammar,
     ## currently not used in all such cases
 
