@@ -141,20 +141,18 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var bool) {.inline
   else:
     reader.valueError(format, "bool value")
 
-template uintImpl() =
+type UintImpl[T] = (
+  #when sizeof(uint) == sizeof(uint64) or sizeof(uint) < sizeof(T):
+  when sizeof(T) == sizeof(uint64):
+    uint64
+  else: # for JS etc
+    uint32
+)
+
+proc readUnsignedInt*[T](format: JsonReadFormat, reader: var HoloReader, _: typedesc[T]): UintImpl[T] =
   #when nimvm: v = type(v)(parseBiggestUInt(parseSymbol(reader)))
-  skipSpace(reader)
-  if reader.nextMatch('+'):
-    discard
-  type UintImpl = (
-    when sizeof(uint) == sizeof(uint64) or v is uint64:
-      uint64
-    else: # for JS etc
-      uint
-  )
-  var
-    v2: UintImpl = 0
-    gotChar = false
+  result = 0
+  var gotChar = false
   for c in reader.peekNext():
     case c
     of '0'..'9':
@@ -163,85 +161,90 @@ template uintImpl() =
       #let prev = v2
       #if prev >= (high(typeof(v)) div 10 - digit):
       #  reader.error("uint overflow: got " & $prev & $c & "... > " & $high(typeof(v)))
-      v2 = v2 * 10 + (UintImpl(c) - UintImpl('0'))
+      result = result * 10 + (typeof(result)(c) - typeof(result)('0'))
       #if v2 < prev:
       #  reader.error("uint overflow: got " & $prev & $c & "... > " & $high(typeof(v)))
     else:
       break
   if not gotChar:
-    reader.unexpectedError(format, "number of type " & $typeof(v))
-  when v isnot uint64:
-    if v2 > UintImpl(high(typeof(v))):
-      reader.error("got uint value: " & $v2 & " > max of " & $typeof(v) & ": " & $high(typeof(v)))
-  v = typeof(v)(v2)
+    reader.unexpectedError(format, "number of type " & $T)
+
+template uintImpl(T: typedesc) =
+  skipSpace(reader)
+  if reader.nextMatch('+'):
+    discard
+  let v2 = readUnsignedInt(format, reader, T)
+  when sizeof(T) != sizeof(uint64):
+    type Impl = UintImpl[T]
+    if v2 > Impl(high(T)):
+      reader.error("got uint value: " & $v2 & " > max unsigned of " & $T & ": " & $high(T))
+  v = T(v2)
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var uint) {.inline.} =
   ## Will parse unsigned integers.
-  uintImpl()
+  uintImpl(uint)
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var uint8) {.inline.} =
   ## Will parse unsigned integers.
-  uintImpl()
+  uintImpl(uint8)
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var uint16) {.inline.} =
   ## Will parse unsigned integers.
-  uintImpl()
+  uintImpl(uint16)
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var uint32) {.inline.} =
   ## Will parse unsigned integers.
-  uintImpl()
+  uintImpl(uint32)
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var uint64) {.inline.} =
   ## Will parse unsigned integers.
-  uintImpl()
+  uintImpl(uint64)
 
-template intImpl() =
+template intImpl(T: typedesc) =
   #when nimvm: v = type(v)(parseBiggestInt(parseSymbol(reader)))
   skipSpace(reader)
-  type UintImpl = (
-    when sizeof(uint) == sizeof(uint64) or v is int64:
-      uint64
-    else: # for JS etc
-      uint
-  )
   if reader.nextMatch('+'):
     discard
   if reader.nextMatch('-'):
-    var v2: UintImpl
-    read(format, reader, v2)
-    if v2 > UintImpl(high(typeof(v))) + 1:
-      reader.error("got int value: -" & $v2 & " < min of " & $typeof(v) & ": " & $low(typeof(v)))
-    v = -typeof(v)(v2)
+    let v2 = readUnsignedInt(format, reader, T)
+    type Impl = UintImpl[T]
+    if v2 > Impl(high(T)):
+      if v2 == Impl(high(T)) + 1:
+        v = low(T)
+      else:
+        reader.error("got int value: -" & $v2 & " > min of " & $T & ": -" & $high(T))
+    else:
+      v = -T(v2)
   else:
-    var v2: UintImpl
-    read(format, reader, v2)
-    if v2 > UintImpl(high(typeof(v))):
-      reader.error("got int value: " & $v2 & " < max of " & $typeof(v) & ": " & $high(typeof(v)))
-    v = typeof(v)(v2)
+    let v2 = readUnsignedInt(format, reader, T)
+    type Impl = UintImpl[T]
+    if v2 > Impl(high(T)):
+      reader.error("got int value: " & $v2 & " < max of " & $T & ": " & $high(T))
+    else:
+      v = T(v2)
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var int) {.inline.} =
   ## Will parse signed integers.
-  intImpl()
+  intImpl(int)
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var int8) {.inline.} =
   ## Will parse signed integers.
-  intImpl()
+  intImpl(int8)
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var int16) {.inline.} =
   ## Will parse signed integers.
-  intImpl()
+  intImpl(int16)
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var int32) {.inline.} =
   ## Will parse signed integers.
-  intImpl()
+  intImpl(int32)
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var int64) {.inline.} =
   ## Will parse signed integers.
-  intImpl()
+  intImpl(int64)
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var float) =
   ## Will parse floats.
-  # XXX clean this up later
   skipSpace(reader)
   if reader.peekMatch('"'):
     # string, check for nim json nan and inf strings:
@@ -414,30 +417,33 @@ proc read*[T: tuple](format: JsonReadFormat, reader: var HoloReader, v: var T) =
       discard
   skipChar(reader, ']')
 
+proc readEnumString*[T: enum](format: JsonReadFormat, reader: var HoloReader, _: typedesc[T]): T =
+  var strV: string
+  read(format, reader, strV)
+  when jsonyHookCompatibility and compiles(enumHook(strV, result)):
+    enumHook(strV, result)
+  elif T is HasFieldMappings:
+    # XXX cannot use by default since normalization is not supported yet unlike `parseEnum`
+    template onEnumInput(e: T) =
+      result = e
+    const fieldMappings = fieldMappings(result, HoloJson)
+    # XXX no normalizer support
+    mapEnumFieldInput(T, strV, fieldMappings, nil, onEnumInput) # XXX needs else for errors
+  else:
+    try:
+      result = parseEnum[T](strV)
+    except ValueError:
+      reader.error("Can't parse enum " & $T & ", got string: " & $strV)
+
 proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   skipSpace(reader)
-  var strV: string
   if reader.peekMatch('"'):
-    read(format, reader, strV)
-    when jsonyHookCompatibility and compiles(enumHook(strV, v)):
-      enumHook(strV, v)
-    elif T is HasFieldMappings:
-      # XXX cannot use by default since normalization is not supported yet unlike `parseEnum`
-      template onEnumInput(e: T) =
-        v = e
-      const fieldMappings = fieldMappings(v, HoloJson)
-      # XXX no normalizer support
-      mapEnumFieldInput(T, strV, fieldMappings, nil, onEnumInput) # XXX needs else for errors
-    else:
-      try:
-        v = parseEnum[T](strV)
-      except ValueError:
-        reader.error("Can't parse enum " & $T & ", got string: " & $strV)
+    v = readEnumString(format, reader, T)
   elif reader.peekMatch({'-', '+', '0'..'9'}):
-    # XXX custom high/low for parsing integers (uintImpl)
+    # XXX custom low/high using readUnsignedInt?
     var integer: int
     read(format, reader, integer)
-    v = T(integer) # XXX maybe case statement here
+    v = T(integer) # XXX maybe case statement here #17
   else:
     reader.unexpectedError(format, "enum value of type " & $T)
 

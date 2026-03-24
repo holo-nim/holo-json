@@ -4,7 +4,7 @@ proc parseError*(reader: var HoloReader, msg: string) {.inline.} =
   ## Shortcut to raise an exception.
   raise newException(JsonParseError, "(" & $reader.line & ", " & $reader.column & ") " & msg)
 
-template skipSpace*(reader: var HoloReader) =
+proc skipSpace*(reader: var HoloReader) {.inline.} =
   ## Will consume whitespace.
   for c in reader.peekNext():
     if c notin Whitespace:

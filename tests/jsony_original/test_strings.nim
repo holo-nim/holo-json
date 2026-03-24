@@ -93,5 +93,5 @@ block:
   s.add "\""
   s.add cast[char](0b11000000)
   s.add "\""
-  doAssertRaises JsonValueError:
+  doAssertRaises JsonParseError:
     discard fromJson(s, string, format = JsonReadFormat(forceUtf8Strings: true))
