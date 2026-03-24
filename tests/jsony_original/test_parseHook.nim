@@ -92,22 +92,22 @@ type Header = object
 
 proc read(format: JsonReadFormat, reader: var HoloReader, v: var seq[Header]) =
   when false: # to not import holo_reader
-    eatChar(reader, '{')
+    expectChar(reader, '{')
     while reader.hasNext():
-      eatSpace(reader)
+      skipSpace(reader)
       if reader.peekMatch('}'):
         break
       var key, value: string
       read(format, reader, key)
-      eatChar(reader, ':')
+      skipChar(reader, ':')
       read(format, reader, value)
       v.add(Header(key: key, value: value))
-      eatSpace(reader)
+      skipSpace(reader)
       if reader.nextMatch(','):
         discard
       else:
         break
-    eatChar(reader, '}')
+    skipChar(reader, '}')
   else:
     for key in readObject(format, reader):
       var value: string

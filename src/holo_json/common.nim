@@ -54,10 +54,12 @@ const jsonyPairsObject* {.booldefine.} = false
 
 type
   RawJson* = distinct string
-  JsonValueError* = object of ValueError
-  JsonParseError* = object of CatchableError
-    ## error that signifies a violation of json grammar,
-    ## currently not used in all such cases
+  JsonError* = object of ValueError
+  JsonValueError* = object of JsonError
+    ## error for when a value can be parsed,
+    ## but could not be fit into the expected value
+  JsonParseError* = object of JsonError
+    ## error for invalid json grammar according to the given format
 
 import holo_map/[groups, fields]
 export groups, fields

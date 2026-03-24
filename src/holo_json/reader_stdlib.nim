@@ -1,11 +1,11 @@
 ## `read` hooks for stdlib types
 
-import ./[common, reader_basic], holo_flow/holo_reader, std/[options, tables, sets]
+import ./[common, reader_basic, parser], holo_flow/holo_reader, std/[options, tables, sets]
 
 proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var Option[T]) =
   ## Parse an Option.
   mixin read
-  eatSpace(reader)
+  skipSpace(reader)
   if reader.nextMatch("null"):
     # v = none(T)?
     return
@@ -20,14 +20,14 @@ template tableImpl(format, reader, v, K, V) =
       # this is added this time
       return
     new(v)
-  eatChar(reader, '{')
+  expectChar(format, reader, '{')
   while reader.hasNext():
-    eatSpace(reader)
+    skipSpace(reader)
     if reader.peekMatch('}'):
       break
     var key: K
     read(format, reader, key)
-    eatChar(reader, ':')
+    skipChar(reader, ':')
     var element: V
     read(format, reader, element)
     v[key] = element
@@ -35,7 +35,7 @@ template tableImpl(format, reader, v, K, V) =
       discard
     else:
       break
-  eatChar(reader, '}')
+  skipChar(reader, '}')
 
 proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var Table[K, V]) =
   ## Parse an object.
