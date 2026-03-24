@@ -360,6 +360,18 @@ proc finishObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var
   ## hook called into when an object/ref object/named tuple has finished reading all fields
   discard
 
+type HasNormalizer* = concept
+  ## implement to normalize field names when reading in json, i.e. for style insensitivity
+  proc normalizeField(_: typedesc[Self], format: type JsonReadFormat, name: string): string
+
+template implNormalizer[T: HasNormalizer, F](_: typedesc[T], format: F): untyped =
+  mixin normalizeField
+  template normalizerImpl(s: string): string {.inject.} =
+    normalizeField(`T`, `F`, s)
+
+template implNormalizer[T: not HasNormalizer, F](_: typedesc[T], format: F): untyped =
+  const normalizerImpl {.inject.} = nil
+
 proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   mixin read
   privateAccess(T) # important
@@ -388,9 +400,9 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
           var v2: typeof(f)
           read(format, reader, v2)
           f = v2
-        const fieldMappings = fieldMappings(v, HoloJson)
-        # XXX no normalizer support
-        mapFieldInput(v, key, fieldMappings, nil, jsonDefaultInputNames, onFieldInput):
+        const mappings = getActualFieldMappings(T, HoloJson)
+        implNormalizer(T, format)
+        mapFieldInput(v, key, mappings, normalizerImpl, jsonDefaultInputNames, onFieldInput):
           discard skipValue(format, reader)
     skipSpace(reader)
     if reader.nextMatch(','):
@@ -423,12 +435,12 @@ proc readEnumString*[T: enum](format: JsonReadFormat, reader: var HoloReader, _:
   when jsonyHookCompatibility and compiles(enumHook(strV, result)):
     enumHook(strV, result)
   elif T is HasFieldMappings:
-    # XXX cannot use by default since normalization is not supported yet unlike `parseEnum`
+    # XXX cannot use by default since style insensitivity is not default unlike `parseEnum`
     template onEnumInput(e: T) =
       result = e
-    const fieldMappings = fieldMappings(result, HoloJson)
-    # XXX no normalizer support
-    mapEnumFieldInput(T, strV, fieldMappings, nil, onEnumInput):
+    const mappings = getActualFieldMappings(T, HoloJson)
+    implNormalizer(T, format)
+    mapEnumFieldInput(T, strV, mappings, normalizerImpl, onEnumInput):
       reader.error("could not parse enum of type " & $T & " from string: " & $strV)
   else:
     try:
@@ -504,10 +516,10 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
           template onInnerField(f, vf, discrim) =
             initObjVariant(v, `vf`, `discrim`)
             break
-          const fieldMappings = fieldMappings(v, HoloJson)
-          # XXX no normalizer support
+          const mappings = getActualFieldMappings(T, HoloJson)
+          implNormalizer(T, format)
           mapInputVariantFieldName(T, key,
-            fieldMappings, nil, jsonDefaultInputNames,
+            mappings, normalizerImpl, jsonDefaultInputNames,
             onInnerField, onVariantField): discard
         discard skipValue(format, reader)
         if not reader.peekMatch('}'):

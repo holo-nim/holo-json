@@ -93,8 +93,8 @@ Not compatible with jsony's parsing/conversion behavior.
   import holo_map/fields
   type Node = ref object
     kind: string
-  proc fieldMappings(T: type Node, group: static MappingGroup): FieldMappingPairs =
-    # note: expected to be complete
+  proc getFieldMappings(T: type Node, group: static MappingGroup): FieldMappingPairs =
+    # note: expected to be complete, can call getDefaultFieldMappings and modify it instead
     result = @{
       "kind": toFieldMapping "type"
     }

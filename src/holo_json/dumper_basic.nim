@@ -10,7 +10,7 @@ type t[T] = tuple[a: string, b: T]
 proc dump*[N, T](format: JsonDumpFormat, writer: var HoloWriter, v: array[N, t[T]])
 proc dump*[N, T](format: JsonDumpFormat, writer: var HoloWriter, v: array[N, T])
 proc dump*[T](format: JsonDumpFormat, writer: var HoloWriter, v: seq[T])
-proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T)
+proc dump*[T: object|ref object](format: JsonDumpFormat, writer: var HoloWriter, v: T)
 proc dump*[T: distinct](format: JsonDumpFormat, writer: var HoloWriter, v: T) {.inline.}
 
 # don't dogfood these yet if they add to compile times:
@@ -410,12 +410,12 @@ proc dump*[T: enum](format: JsonDumpFormat, writer: var HoloWriter, v: T) {.inli
     template onEnumOutput(s: string) =
       writer.dumpStaticStr(s)
     when T is HasFieldMappings:
-      const fieldMappings = fieldMappings(v, HoloJson)
+      const mappings = getActualFieldMappings(T, HoloJson)
     else:
-      const fieldMappings = default(FieldMappingPairs)
+      const mappings = default(FieldMappingPairs)
     # can always use it here, however will not work with custom `$` XXX
     # XXX no normalizer support
-    mapEnumFieldOutput(T, v, fieldMappings, nil, onEnumOutput)
+    mapEnumFieldOutput(T, v, mappings, nil, onEnumOutput)
     when false:
       format.dump(writer, $v)
   of EnumOrd:
@@ -444,8 +444,13 @@ template dumpKey(writer: var HoloWriter, v: static string) =
   const v2 = holo_json.toJson(v) & ":"
   writer.write v2
 
-proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
+proc dump*[T: object|ref object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
+  # ref object needs to be implemented here for hooks to work
   mixin dump
+  when T is ref:
+    if v.isNil:
+      writer.write "null"
+      return
   writer.write '{'
   var needsComma = false
   when jsonyPairsObject and compiles(for k, e in v.pairs: discard):
@@ -476,9 +481,9 @@ proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
         else: needsComma = true
         writer.dumpKey(fName)
         format.dump(writer, f)
-      const fieldMappings = fieldMappings(v, HoloJson)
+      const mappings = getActualFieldMappings(T, HoloJson)
       # XXX no normalizer support
-      mapFieldOutput(v, fieldMappings, nil, jsonDefaultOutputName, onFieldOutput)
+      mapFieldOutput(v, mappings, nil, jsonDefaultOutputName, onFieldOutput)
   writer.write '}'
 
 proc dump*[N, T](format: JsonDumpFormat, writer: var HoloWriter, v: array[N, t[T]]) =
@@ -494,7 +499,7 @@ proc dump*[N, T](format: JsonDumpFormat, writer: var HoloWriter, v: array[N, t[T
     format.dump(writer, e)
   writer.write '}'
 
-proc dump*[T](format: JsonDumpFormat, writer: var HoloWriter, v: ref T) {.inline.} =
+proc dump*[T: not object](format: JsonDumpFormat, writer: var HoloWriter, v: ref T) {.inline.} =
   mixin dump
   if v == nil:
     writer.write "null"
