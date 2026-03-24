@@ -1,7 +1,7 @@
 ## implements reading behavior for basic types
 
 import ./common, holo_map/[caseutils, variants], holo_flow/holo_reader
-import std/[unicode, parseutils, typetraits, macros, importutils, tables]
+import std/[unicode, parseutils, typetraits, macros, importutils, tables, strbasics]
 import std/strutils except format
 import std/json #from std/json import JsonNodeKind, JsonNode
 export HoloReader, initHoloReader, startRead
@@ -211,17 +211,19 @@ proc skipValue*(format: JsonReadFormat, reader: var HoloReader): int =
 proc readRawValue*(format: JsonReadFormat, reader: var HoloReader): RawJsonValue =
   reader.lockBuffer()
   try:
+    skipSpace(reader)
     let kind = peekRawKind(format, reader)
     let firstPos = skipValue(format, reader)
     result = RawJsonValue(kind: kind, raw: reader.buffer[firstPos .. reader.bufferPos].RawJson)
   finally:
     reader.unlockBuffer()
 
-proc peekRawValue*(format: JsonReadFormat, reader: var HoloReader): RawJsonValue =
+proc peekRawValueSkipSpace*(format: JsonReadFormat, reader: var HoloReader): RawJsonValue =
   ## reads a full raw json value, relatively inefficient and mostly meant for errors
   let (savedPos, savedLine, savedCol) = (reader.bufferPos, reader.line, reader.column)
   reader.lockBuffer()
   try:
+    skipSpace(reader)
     let kind = peekRawKind(format, reader)
     let firstPos = skipValue(format, reader)
     result = RawJsonValue(kind: kind, raw: reader.buffer[firstPos .. reader.bufferPos].RawJson)
@@ -237,6 +239,9 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var RawJson) {.inl
   finally:
     reader.unlockBuffer()
 
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var RawJsonValue) {.inline.} =
+  v = readRawValue(format, reader)
+
 const jsonUnexpectedValueErrorLength* {.intdefine.} = 100
   ## number of characters a raw unexpected value can show in an error message
   ## if negative, no maximum
@@ -246,7 +251,7 @@ proc endError*(reader: var HoloReader, expected: string) =
   reader.parseError("expected " & expected & " but end reached")
 
 proc valueError*(reader: var HoloReader, format: JsonReadFormat, expected: string) =
-  let got = peekRawValue(format, reader) # important: this can give parse errors by itself
+  let got = peekRawValueSkipSpace(format, reader) # important: this can give parse errors by itself
   var msg = "expected "
   msg.add expected
   msg.add " but got "
@@ -259,7 +264,7 @@ proc valueError*(reader: var HoloReader, format: JsonReadFormat, expected: strin
       msg.add got.raw.string
     else:
       # copies but whatever:
-      msg.add got.raw.string[0 ..< jsonUnexpectedValueErrorLength]
+      msg.add got.raw.string.toOpenArray(0, jsonUnexpectedValueErrorLength - 1)
       msg.add "..."
   reader.error(msg)
 
@@ -967,10 +972,19 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode) =
     finally:
       reader.unlockBuffer()
 
+proc read*[T](format: JsonReadFormat, reader: var HoloReader, _: typedesc[T]): T =
+  mixin read
+  read(format, reader, result)
+
 proc readJson*[T](reader: var HoloReader, v: var T) {.inline.} =
+  mixin read
   read(JsonReadFormat(), reader, v)
 
-proc fromJson*[T](s: string, x: typedesc[T]): T {.inline.} =
+proc readJson*[T](reader: var HoloReader, _: typedesc[T]): T {.inline.} =
+  mixin read
+  read(JsonReadFormat(), reader, result)
+
+proc fromJson*[T](s: string, x: typedesc[T], format = JsonReadFormat()): T {.inline.} =
   ## Takes json and outputs the object it represents.
   ## * Extra json fields are ignored.
   ## * Missing json fields keep their default values.
@@ -979,7 +993,7 @@ proc fromJson*[T](s: string, x: typedesc[T]): T {.inline.} =
   result = default(T)
   var reader = initHoloReader(doLineColumn = holoJsonLineColumn)
   reader.startRead(s)
-  readJson(reader, result)
+  read(format, reader, result)
   skipSpace(reader)
   if reader.hasNext():
     var msg = "Found non-whitespace character after JSON data: "

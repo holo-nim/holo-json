@@ -94,5 +94,4 @@ block:
   s.add cast[char](0b11000000)
   s.add "\""
   doAssertRaises JsonValueError:
-    var reader = initHoloReader()
-    JsonReadFormat(forceUtf8Strings: true).read(reader, s)
+    discard fromJson(s, string, format = JsonReadFormat(forceUtf8Strings: true))
