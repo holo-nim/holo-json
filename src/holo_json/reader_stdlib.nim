@@ -20,7 +20,7 @@ template tableImpl(format, reader, v, K, V) =
       # this is added this time
       return
     new(v)
-  expectChar(reader, '{')
+  expectChar(format, reader, '{')
   while reader.hasNext():
     skipSpace(reader)
     if reader.peekMatch('}'):

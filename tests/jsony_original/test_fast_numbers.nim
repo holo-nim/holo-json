@@ -1,6 +1,6 @@
 import holo_json
 
-doAssertRaises JsonValueError:
+doAssertRaises JsonParseError:
   var
     reader = initHoloReader()
     n: uint64

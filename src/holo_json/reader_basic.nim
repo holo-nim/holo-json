@@ -6,8 +6,6 @@ import std/strutils except format
 import std/json #from std/json import JsonNodeKind, JsonNode
 export HoloReader, initHoloReader, startRead
 
-# XXX make sure "wrong parses" are properly dealt with, ie if it expects a integer and receives "123abc" it should not parse 123 and be done with it
-
 proc error*(reader: var HoloReader, msg: string) {.inline.} =
   ## Shortcut to raise an exception.
   raise newException(JsonValueError, "(" & $reader.line & ", " & $reader.column & ") " & msg)
@@ -353,7 +351,7 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var bool) {.inline
       reader.valueError(format, "false")
   of 't':
     if reader.nextMatch("true"):
-      v = false
+      v = true
     else:
       reader.valueError(format, "true")
   else:
@@ -491,7 +489,7 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var float) =
     var i = firstPos
     var f: float
     let chars = parseutils.parseFloat(reader.buffer, f, i)
-    assert firstPos + chars == reader.bufferPos
+    assert firstPos + chars == reader.bufferPos + 1
     v = f
   finally:
     reader.unlockBuffer()
@@ -828,7 +826,7 @@ proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.
     read(format, reader, integer)
     v = T(integer) # XXX maybe case statement here
   else:
-    reader.unexpectedError("enum value of type " & $T)
+    reader.unexpectedError(format, "enum value of type " & $T)
 
 proc startObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   ## hook called into when an object/ref object/named tuple are about to read their fields
@@ -957,14 +955,14 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode) =
       var i = firstPos
       var integer: BiggestInt
       var chars = parseutils.parseBiggestInt(reader.buffer, integer, i)
-      if firstPos + chars < reader.bufferPos:
+      if firstPos + chars <= reader.bufferPos:
         i = firstPos
         var f: float
         chars = parseutils.parseFloat(reader.buffer, f, i)
-        assert firstPos + chars == reader.bufferPos
+        assert firstPos + chars == reader.bufferPos + 1
         v = newJFloat(f)
       else:
-        assert firstPos + chars == reader.bufferPos
+        assert firstPos + chars == reader.bufferPos + 1
         v = newJInt(integer)
     finally:
       reader.unlockBuffer()

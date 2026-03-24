@@ -93,6 +93,6 @@ block:
   s.add "\""
   s.add cast[char](0b11000000)
   s.add "\""
-  if false:
-    doAssertRaises JsonValueError:
-      discard fromJson(s, string)
+  doAssertRaises JsonValueError:
+    var reader = initHoloReader()
+    JsonReadFormat(forceUtf8Strings: true).read(reader, s)
