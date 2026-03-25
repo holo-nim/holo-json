@@ -1,6 +1,6 @@
 ## implements dumping behavior for basic types 
 
-import ./common, holo_flow/holo_writer, std/[json, typetraits, unicode, tables, macros]
+import ./common, holo_flow/holo_writer, std/[typetraits, unicode]
 import std/math # for classify
 
 export HoloWriter, initHoloWriter, startWrite, finishWrite, write
@@ -392,6 +392,7 @@ proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: char) =
 
 proc dump*[T: tuple](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
   mixin dump
+  # XXX different for named tuple?
   writer.write '['
   var needsComma = false
   for _, e in v.fieldPairs:
@@ -505,43 +506,6 @@ proc dump*[T](format: JsonDumpFormat, writer: var HoloWriter, v: ref T) {.inline
     writer.write "null"
   else:
     format.dump(writer, v[])
-
-proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: JsonNode) =
-  ## Dumps a regular json node.
-  if v == nil:
-    writer.write "null"
-  else:
-    case v.kind:
-    of JObject:
-      writer.write '{'
-      var i = 0
-      for k, e in v.pairs:
-        if i != 0:
-          writer.write ","
-        format.dump(writer, k)
-        writer.write ':'
-        format.dump(writer, e)
-        inc i
-      writer.write '}'
-    of JArray:
-      writer.write '['
-      var i = 0
-      for e in v:
-        if i != 0:
-          writer.write ","
-        format.dump(writer, e)
-        inc i
-      writer.write ']'
-    of JNull:
-      writer.write "null"
-    of JInt:
-      format.dump(writer, v.getInt)
-    of JFloat:
-      format.dump(writer, v.getFloat)
-    of JString:
-      format.dump(writer, v.getStr)
-    of JBool:
-      format.dump(writer, v.getBool)
 
 proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: RawJson) {.inline.} =
   writer.write v.string

@@ -1,4 +1,4 @@
-import holo_json, std/strutils
+import holo_json
 
 type Node = ref object
   kind {.mapping: "type".}: string

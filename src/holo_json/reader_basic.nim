@@ -1,9 +1,7 @@
 ## implements reading behavior for basic types
 
 import ./[common, parser], holo_map/[caseutils, variants], holo_flow/holo_reader
-import std/[unicode, parseutils, typetraits, macros, importutils, tables, strbasics]
-import std/strutils except format
-import std/json #from std/json import JsonNodeKind, JsonNode
+import std/[unicode, parseutils, typetraits, importutils, strbasics]
 export HoloReader, initHoloReader, startRead
 
 proc error*(reader: var HoloReader, msg: string) {.inline.} =
@@ -16,7 +14,6 @@ proc read*[T: object](format: JsonReadFormat, reader: var HoloReader, v: var T)
 proc read*[T: tuple](format: JsonReadFormat, reader: var HoloReader, v: var T)
 proc read*[T: array](format: JsonReadFormat, reader: var HoloReader, v: var T)
 proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.inline.}
-proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode)
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) {.inline.}
 proc read*[T: distinct](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.}
 
@@ -343,19 +340,6 @@ proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.in
   new(v)
   read(format, reader, v[])
 
-proc crudeReplaceIdent(n: NimNode, name: string, val: NimNode): NimNode =
-  if n.kind in {nnkIdent, nnkAccQuoted, nnkSym, nnkOpenSymChoice, nnkClosedSymChoice}:
-    if n.eqIdent(name):
-      result = copy val
-    else:
-      result = n
-  elif n.kind in AtomicNodes or n.len == 0:
-    result = n
-  else:
-    result = newNimNode(n.kind, n)
-    for a in n:
-      result.add(crudeReplaceIdent(a, name, val))
-
 proc finishObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   ## hook called into when an object or named tuple has finished reading all fields
   ##
@@ -366,6 +350,17 @@ proc finishObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var
 type HasNormalizer* = concept
   ## implement to normalize field names when reading in json, i.e. for style insensitivity
   proc normalizeField(_: typedesc[Self], format: type JsonReadFormat, name: string): string
+
+when holoJsonObjectStyleInsensitivity:
+  from std/strutils import nimIdentNormalize
+  proc normalizeField*[T: object](_: typedesc[T], format: type JsonReadFormat, name: string): string =
+    nimIdentNormalize(name)
+
+when holoJsonEnumStyleInsensitivity:
+  when not declared(nimIdentNormalize):
+    from std/strutils import nimIdentNormalize
+  proc normalizeField*[T: enum](_: typedesc[T], format: type JsonReadFormat, name: string): string =
+    nimIdentNormalize(name)
 
 template implNormalizer[T: HasNormalizer](_: typedesc[T]): untyped =
   mixin normalizeField
@@ -421,7 +416,7 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
 proc read*[T: tuple](format: JsonReadFormat, reader: var HoloReader, v: var T) =
   mixin read
   skipSpace(reader)
-  when T.isNamedTuple():
+  when isNamedTuple(T):
     if reader.nextMatch('{'):
       parseObjectInner(format, reader, v)
       skipChar(reader, '}')
@@ -440,19 +435,16 @@ proc readEnumString*[T: enum](format: JsonReadFormat, reader: var HoloReader, _:
   read(format, reader, strV)
   when jsonyHookCompatibility and compiles(enumHook(strV, result)):
     enumHook(strV, result)
-  elif T is HasFieldMappings:
-    # XXX cannot use by default since style insensitivity is not default unlike `parseEnum`
+  else:
     template onEnumInput(e: T) =
       result = e
-    const mappings = getActualFieldMappings(T, HoloJson)
+    when T is HasFieldMappings:
+      const mappings = getActualFieldMappings(T, HoloJson)
+    else:
+      const mappings = default(FieldMappingPairs)
     implNormalizer(T)
     mapEnumFieldInput(T, strV, mappings, normalizerImpl, onEnumInput):
       reader.error("could not parse enum of type " & $T & " from string: " & $strV)
-  else:
-    try:
-      result = parseEnum[T](strV)
-    except ValueError:
-      reader.error("Can't parse enum " & $T & ", got string: " & $strV)
 
 proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   skipSpace(reader)
@@ -549,68 +541,6 @@ proc read*[T: distinct](format: JsonReadFormat, reader: var HoloReader, v: var T
   mixin read
   read(format, reader, distinctBase(T)(v))
 
-proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode) =
-  ## Parses a regular json node.
-  skipSpace(reader)
-  let kind = peekRawKind(format, reader)
-  case kind
-  of JsonInvalid:
-    reader.unexpectedError(format, "json value")
-  of JsonObject:
-    v = newJObject()
-    for k in readObject(format, reader):
-      var e: JsonNode
-      read(format, reader, e)
-      v[k] = e
-  of JsonArray:
-    v = newJArray()
-    for i in readArray(format, reader):
-      var e: JsonNode
-      read(format, reader, e)
-      v.add(e)
-  of JsonString:
-    var str: string
-    read(format, reader, str)
-    v = newJString(str)
-  of JsonNull:
-    unsafeNextBy(reader, "null".len)
-    v = newJNull()
-  of JsonTrue:
-    unsafeNextBy(reader, "true".len)
-    v = newJBool(true)
-  of JsonFalse:
-    unsafeNextBy(reader, "false".len)
-    v = newJBool(false)
-  of JsonRawNan:
-    unsafeNextBy(reader, "NaN".len)
-    v = newJFloat(NaN)
-  of JsonRawInf:
-    unsafeNextBy(reader, "Infinity".len)
-    v = newJFloat(Inf)
-  of JsonRawNegInf:
-    unsafeNextBy(reader, "-Infinity".len)
-    v = newJFloat(NegInf)
-  of JsonNumber:
-    reader.lockBuffer()
-    try:
-      let firstPos = skipNumber(format, reader)
-      if firstPos < 0:
-        reader.unexpectedError(format, "number value")
-      var i = firstPos
-      var integer: BiggestInt
-      var chars = parseutils.parseBiggestInt(reader.buffer, integer, i)
-      if firstPos + chars <= reader.bufferPos:
-        i = firstPos
-        var f: float
-        chars = parseutils.parseFloat(reader.buffer, f, i)
-        assert firstPos + chars == reader.bufferPos + 1
-        v = newJFloat(f)
-      else:
-        assert firstPos + chars == reader.bufferPos + 1
-        v = newJInt(integer)
-    finally:
-      reader.unlockBuffer()
-
 proc read*[T](format: JsonReadFormat, reader: var HoloReader, _: typedesc[T]): T =
   mixin read
   read(format, reader, result)
@@ -638,7 +568,3 @@ proc fromJson*[T](s: string, x: typedesc[T], format = JsonReadFormat()): T {.inl
     var msg = "Found non-whitespace character after JSON data: "
     msg.addQuoted(reader.peekOrZero())
     reader.parseError(msg)
-
-proc fromJson*(s: string): JsonNode {.inline.} =
-  ## Takes json parses it into `JsonNode`s.
-  result = fromJson(s, JsonNode)

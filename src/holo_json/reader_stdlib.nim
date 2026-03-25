@@ -1,6 +1,72 @@
 ## `read` hooks for stdlib types
 
-import ./[common, reader_basic, parser], holo_flow/holo_reader, std/[options, tables, sets]
+import ./[common, reader_basic, parser], holo_flow/holo_reader, std/[options, tables, sets, json, parseutils]
+
+proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode) =
+  ## Parses a regular json node.
+  skipSpace(reader)
+  let kind = peekRawKind(format, reader)
+  case kind
+  of JsonInvalid:
+    reader.unexpectedError(format, "json value")
+  of JsonObject:
+    v = newJObject()
+    for k in readObject(format, reader):
+      var e: JsonNode
+      read(format, reader, e)
+      v[k] = e
+  of JsonArray:
+    v = newJArray()
+    for i in readArray(format, reader):
+      var e: JsonNode
+      read(format, reader, e)
+      v.add(e)
+  of JsonString:
+    var str: string
+    read(format, reader, str)
+    v = newJString(str)
+  of JsonNull:
+    unsafeNextBy(reader, "null".len)
+    v = newJNull()
+  of JsonTrue:
+    unsafeNextBy(reader, "true".len)
+    v = newJBool(true)
+  of JsonFalse:
+    unsafeNextBy(reader, "false".len)
+    v = newJBool(false)
+  of JsonRawNan:
+    unsafeNextBy(reader, "NaN".len)
+    v = newJFloat(NaN)
+  of JsonRawInf:
+    unsafeNextBy(reader, "Infinity".len)
+    v = newJFloat(Inf)
+  of JsonRawNegInf:
+    unsafeNextBy(reader, "-Infinity".len)
+    v = newJFloat(NegInf)
+  of JsonNumber:
+    reader.lockBuffer()
+    try:
+      let firstPos = skipNumber(format, reader)
+      if firstPos < 0:
+        reader.unexpectedError(format, "number value")
+      var i = firstPos
+      var integer: BiggestInt
+      var chars = parseutils.parseBiggestInt(reader.buffer, integer, i)
+      if firstPos + chars <= reader.bufferPos:
+        i = firstPos
+        var f: float
+        chars = parseutils.parseFloat(reader.buffer, f, i)
+        assert firstPos + chars == reader.bufferPos + 1
+        v = newJFloat(f)
+      else:
+        assert firstPos + chars == reader.bufferPos + 1
+        v = newJInt(integer)
+    finally:
+      reader.unlockBuffer()
+
+proc fromJson*(s: string): JsonNode {.inline.} =
+  ## Takes json parses it into `JsonNode`s.
+  result = fromJson(s, JsonNode)
 
 proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var Option[T]) =
   ## Parse an Option.

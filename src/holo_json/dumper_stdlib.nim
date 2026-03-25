@@ -1,6 +1,43 @@
 ## `dump` hooks for stdlib types
 
-import ./[common, dumper_basic], holo_flow/holo_writer, std/[options, sets, tables]
+import ./[common, dumper_basic], holo_flow/holo_writer, std/[options, sets, tables, json]
+
+proc dump*(format: JsonDumpFormat, writer: var HoloWriter, v: JsonNode) =
+  ## Dumps a regular json node.
+  if v == nil:
+    writer.write "null"
+  else:
+    case v.kind:
+    of JObject:
+      writer.write '{'
+      var i = 0
+      for k, e in v.pairs:
+        if i != 0:
+          writer.write ","
+        format.dump(writer, k)
+        writer.write ':'
+        format.dump(writer, e)
+        inc i
+      writer.write '}'
+    of JArray:
+      writer.write '['
+      var i = 0
+      for e in v:
+        if i != 0:
+          writer.write ","
+        format.dump(writer, e)
+        inc i
+      writer.write ']'
+    of JNull:
+      writer.write "null"
+    of JInt:
+      format.dump(writer, v.getInt)
+    of JFloat:
+      format.dump(writer, v.getFloat)
+    of JString:
+      format.dump(writer, v.getStr)
+    of JBool:
+      format.dump(writer, v.getBool)
 
 proc dump*[T](format: JsonDumpFormat, writer: var HoloWriter, v: Option[T]) {.inline.} =
   mixin dump

@@ -9,6 +9,12 @@ const holoJsonStringCopyMem* {.booldefine.} = true
   ## uses `copyMem` to copy batched string characters whenever available,
   ## given `holoJsonBatchStringAdd` is enabled
 
+const holoJsonObjectStyleInsensitivity* {.booldefine.} = false
+  ## defines a normalizer hook for object fields to implement style insensitivity
+
+const holoJsonEnumStyleInsensitivity* {.booldefine.} = false
+  ## defines a normalizer hook for enum fields to implement style insensitivity
+
 type
   JsonReadFormat* = object
     handleUtf16*: bool = true
