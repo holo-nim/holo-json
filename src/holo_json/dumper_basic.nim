@@ -10,7 +10,7 @@ type t[T] = tuple[a: string, b: T]
 proc dump*[N, T](format: JsonDumpFormat, writer: var HoloWriter, v: array[N, t[T]])
 proc dump*[N, T](format: JsonDumpFormat, writer: var HoloWriter, v: array[N, T])
 proc dump*[T](format: JsonDumpFormat, writer: var HoloWriter, v: seq[T])
-proc dump*[T: object|ref object](format: JsonDumpFormat, writer: var HoloWriter, v: T)
+proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T)
 proc dump*[T: distinct](format: JsonDumpFormat, writer: var HoloWriter, v: T) {.inline.}
 
 # don't dogfood these yet if they add to compile times:
@@ -444,8 +444,7 @@ template dumpKey(writer: var HoloWriter, v: static string) =
   const v2 = holo_json.toJson(v) & ":"
   writer.write v2
 
-proc dump*[T: object|ref object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
-  # ref object needs to be implemented here for hooks to work
+proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
   mixin dump
   when T is ref:
     if v.isNil:
@@ -499,7 +498,7 @@ proc dump*[N, T](format: JsonDumpFormat, writer: var HoloWriter, v: array[N, t[T
     format.dump(writer, e)
   writer.write '}'
 
-proc dump*[T: not object](format: JsonDumpFormat, writer: var HoloWriter, v: ref T) {.inline.} =
+proc dump*[T](format: JsonDumpFormat, writer: var HoloWriter, v: ref T) {.inline.} =
   mixin dump
   if v == nil:
     writer.write "null"

@@ -12,10 +12,10 @@ proc error*(reader: var HoloReader, msg: string) {.inline.} =
 
 proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var seq[T])
 proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.}
-proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader, v: var T)
+proc read*[T: object](format: JsonReadFormat, reader: var HoloReader, v: var T)
 proc read*[T: tuple](format: JsonReadFormat, reader: var HoloReader, v: var T)
 proc read*[T: array](format: JsonReadFormat, reader: var HoloReader, v: var T)
-proc read*[T: not object](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.inline.}
+proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.inline.}
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode)
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) {.inline.}
 proc read*[T: distinct](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.}
@@ -334,7 +334,7 @@ proc read*[T: array](format: JsonReadFormat, reader: var HoloReader, v: var T) =
       reader.parseError("expected comma")
   skipChar(reader, ']')
 
-proc read*[T: not object](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.inline.} =
+proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.inline.} =
   mixin read
   skipSpace(reader)
   if reader.nextMatch("null"):
@@ -475,8 +475,8 @@ template initObjVariant[T](v: var T, discrimField, discrimValue) =
   v = T(`discrimField`: `discrimValue`)
   startObjectRead(format, reader, v)
 
-proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader, v: var T) =
-  ## Parse an object or ref object.
+proc read*[T: object](format: JsonReadFormat, reader: var HoloReader, v: var T) =
+  ## Parse an object.
   privateAccess(T) # important
   mixin read
   skipSpace(reader)
