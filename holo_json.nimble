@@ -9,22 +9,8 @@ requires "nim >= 2.0.0"
 requires "https://github.com/holo-nim/holo-flow#HEAD"
 requires "https://github.com/holo-nim/holo-map#HEAD"
 
-when (NimMajor, NimMinor) >= (1, 4):
-  when (compiles do: import nimbleutils):
-    import nimbleutils
-    # https://github.com/metagn/nimbleutils
-
 task docs, "build docs for all modules":
-  when declared(buildDocs):
-    buildDocs(gitUrl = "https://github.com/holo-nim/holo-json")
-  else:
-    echo "docs task not implemented, need nimbleutils"
+  exec "nim r ci/build_docs.nim"
 
 task tests, "run tests for multiple backends and defines":
-  when declared(runTests):
-    runTests(
-      backends = {c, js, nims},
-      recursiveDir = true
-    )
-  else:
-    echo "tests task not implemented, need nimbleutils"
+  exec "nim r ci/run_tests.nim"
