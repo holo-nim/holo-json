@@ -50,8 +50,9 @@ type
     id: string
     bar: Bar4
 
-proc startObjectRead(format: JsonReadFormat, reader: var HoloReader, foo: var Foo4) =
-  foo = Foo4()
+template derefType[T](_: typedesc[ref T]): type T = T
+
+proc startObjectRead(format: JsonReadFormat, reader: var HoloReader, foo: var derefType(Foo4)) =
   foo.visible = "yes"
 
 block:

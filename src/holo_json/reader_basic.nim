@@ -357,20 +357,26 @@ proc crudeReplaceIdent(n: NimNode, name: string, val: NimNode): NimNode =
       result.add(crudeReplaceIdent(a, name, val))
 
 proc finishObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
-  ## hook called into when an object/ref object/named tuple has finished reading all fields
+  ## hook called into when an object or named tuple has finished reading all fields
+  ##
+  ## does not work for ref objects, define it for their deref types,
+  ## see `derefType` in `test_objects` for an easy way to do this
   discard
 
 type HasNormalizer* = concept
   ## implement to normalize field names when reading in json, i.e. for style insensitivity
   proc normalizeField(_: typedesc[Self], format: type JsonReadFormat, name: string): string
 
-template implNormalizer[T: HasNormalizer, F](_: typedesc[T], format: F): untyped =
+template implNormalizer[T: HasNormalizer](_: typedesc[T]): untyped =
   mixin normalizeField
   template normalizerImpl(s: string): string {.inject.} =
-    normalizeField(`T`, `F`, s)
+    normalizeField(`T`, JsonReadFormat, s)
 
-template implNormalizer[T: not HasNormalizer, F](_: typedesc[T], format: F): untyped =
-  const normalizerImpl {.inject.} = nil
+template implNormalizer[T: not HasNormalizer](_: typedesc[T]): untyped =
+  when (ref T) is HasNormalizer:
+    implNormalizer(ref T)
+  else:
+    const normalizerImpl {.inject.} = nil
 
 proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   mixin read
@@ -401,7 +407,7 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
           read(format, reader, v2)
           f = v2
         const mappings = getActualFieldMappings(T, HoloJson)
-        implNormalizer(T, format)
+        implNormalizer(T)
         mapFieldInput(v, key, mappings, normalizerImpl, jsonDefaultInputNames, onFieldInput):
           discard skipValue(format, reader)
     skipSpace(reader)
@@ -439,7 +445,7 @@ proc readEnumString*[T: enum](format: JsonReadFormat, reader: var HoloReader, _:
     template onEnumInput(e: T) =
       result = e
     const mappings = getActualFieldMappings(T, HoloJson)
-    implNormalizer(T, format)
+    implNormalizer(T)
     mapEnumFieldInput(T, strV, mappings, normalizerImpl, onEnumInput):
       reader.error("could not parse enum of type " & $T & " from string: " & $strV)
   else:
@@ -461,7 +467,10 @@ proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.
     reader.unexpectedError(format, "enum value of type " & $T)
 
 proc startObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
-  ## hook called into when an object/ref object/named tuple are about to read their fields
+  ## hook called into when an object or named tuple are about to read their fields
+  ##
+  ## does not work for ref objects, define it for their deref types,
+  ## see `derefType` in `test_objects` for an easy way to do this
   discard
 
 template initObj[T](v: var T) =
@@ -517,7 +526,7 @@ proc read*[T: object](format: JsonReadFormat, reader: var HoloReader, v: var T) 
             initObjVariant(v, `vf`, `discrim`)
             break
           const mappings = getActualFieldMappings(T, HoloJson)
-          implNormalizer(T, format)
+          implNormalizer(T)
           mapInputVariantFieldName(T, key,
             mappings, normalizerImpl, jsonDefaultInputNames,
             onInnerField, onVariantField): discard
