@@ -10,16 +10,19 @@ doAssert node.toJson() == nodeJson
 
 type
   NodeNumKind = enum # the different node types
+    nkNone,
     nkInt,           # a leaf with an integer value
     nkFloat,         # a leaf with a float value
   RefNode = ref object
     active: bool
     case kind {.mapping: "type".}: NodeNumKind # the ``kind`` field is the discriminator
+    of nkNone: discard
     of nkInt: intVal: int
     of nkFloat: floatVal: float
   ValueNode = object
     active: bool
     case kind {.mapping: "type".}: NodeNumKind # the ``kind`` field is the discriminator
+    of nkNone: discard
     of nkInt: intVal: int
     of nkFloat: floatVal: float
 
@@ -29,7 +32,7 @@ block:
     a = """{"active":true,"type":"nkFloat","float_val":3.14}""".fromJson(RefNode)
     b = """{"float_val":3.14,"active":true,"type":"nkFloat"}""".fromJson(RefNode)
     c = """{"type":"nkFloat","float_val":3.14,"active":true}""".fromJson(RefNode)
-    d = """{"active":true,"intVal":42}""".fromJson(RefNode)
+    d = """{"active":true,"int_val":42}""".fromJson(RefNode)
   doAssert a.kind == nkFloat
   doAssert b.kind == nkFloat
   doAssert c.kind == nkFloat
@@ -44,7 +47,7 @@ block:
     a = """{"active":true,"type":"nkFloat","float_val":3.14}""".fromJson(ValueNode)
     b = """{"float_al":3.14,"active":true,"type":"nkFloat"}""".fromJson(ValueNode)
     c = """{"type":"nkFloat","float_val":3.14,"active":true}""".fromJson(ValueNode)
-    d = """{"active":true,"intVal":42}""".fromJson(ValueNode)
+    d = """{"active":true,"int_val":42}""".fromJson(ValueNode)
   doAssert a.kind == nkFloat
   doAssert b.kind == nkFloat
   doAssert c.kind == nkFloat

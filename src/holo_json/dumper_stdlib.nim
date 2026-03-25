@@ -50,15 +50,7 @@ proc dump*[K: string | enum, V](format: JsonDumpFormat, writer: var HoloWriter, 
   ## Dump an object.
   tableImpl(format, writer, tab, K, V)
 
-proc dump*[K: string | enum, V](format: JsonDumpFormat, writer: var HoloWriter, tab: TableRef[K, V]) =
-  ## Dump an object.
-  tableImpl(format, writer, tab, K, V)
-
 proc dump*[K: string | enum, V](format: JsonDumpFormat, writer: var HoloWriter, tab: OrderedTable[K, V]) =
-  ## Dump an object.
-  tableImpl(format, writer, tab, K, V)
-
-proc dump*[K: string | enum, V](format: JsonDumpFormat, writer: var HoloWriter, tab: OrderedTableRef[K, V]) =
   ## Dump an object.
   tableImpl(format, writer, tab, K, V)
 
@@ -66,6 +58,15 @@ proc dump*[K: string | enum](format: JsonDumpFormat, writer: var HoloWriter, tab
   ## Dump an object.
   tableImpl(format, writer, tab, K, int)
 
-proc dump*[K: string | enum](format: JsonDumpFormat, writer: var HoloWriter, tab: CountTableRef[K]) =
-  ## Dump an object.
-  tableImpl(format, writer, tab, K, int)
+when false: # should not need anymore with the `ref object` overload disabled
+  proc dump*[K: string | enum, V](format: JsonDumpFormat, writer: var HoloWriter, tab: TableRef[K, V]) =
+    ## Dump an object.
+    tableImpl(format, writer, tab, K, V)
+
+  proc dump*[K: string | enum, V](format: JsonDumpFormat, writer: var HoloWriter, tab: OrderedTableRef[K, V]) =
+    ## Dump an object.
+    tableImpl(format, writer, tab, K, V)
+
+  proc dump*[K: string | enum](format: JsonDumpFormat, writer: var HoloWriter, tab: CountTableRef[K]) =
+    ## Dump an object.
+    tableImpl(format, writer, tab, K, int)

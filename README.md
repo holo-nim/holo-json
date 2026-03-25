@@ -115,9 +115,25 @@ Not compatible with jsony's parsing/conversion behavior.
 
 * Reading/dumping behavior is modularized, you can import one without the other. The default hooks for stdlib types like tables and sets are also moved to their own modules so they can be selectively not imported.
 
+* The runtime object hooks from jsony (adapted `startObjectRead`/`finishObjectRead` as well as compatibility-only `renameHook` and `skipHook`) no longer work when defined for ref objects. Instead they have to be defined on the dereferenced object type, which can be done easily like so:
+
+  ```
+  type Foo = ref object
+  template derefType[T](_: typedesc[ref T]): typedesc[T] = T
+  proc startObjectRead(format: JsonReadFormat, reader: var HoloReader, foo: var derefType(Foo)) = ...
+  ```
+
+  This is because the `read`/`dump` hooks for objects are no longer defined for ref objects, only normal objects.
+  Ref objects instead go through the normal `ref` hook. This is so that `ref Foo` now works properly if
+  `Foo` is an object with custom hooks. There were other ways to deal with this but the other `ref` hook
+  also needed to exclude any constraints put on the `ref object` hook with `not` to avoid ambiguities.
+
+  However the compile time hooks still work when defined on a ref object, i.e. `normalizeField` and `getFieldMappings`.
+  This is because there are wrappers around them that also check for `ref T`, which is not possible with the runtime hooks.
+
 ### Data handling
 
-* Instead of working on bare strings, "dynamic buffers" from [holo-flow](https://github.com/holo-nim/holo-flow) are used.
+* Instead of working on bare strings, "shrinking buffers" from [holo-flow](https://github.com/holo-nim/holo-flow) are used.
 
 * The existence of the format and reader/writer objects allows for line/column handling and options for different behavior, a potential option is for pretty output but is not implemented yet.
 

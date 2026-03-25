@@ -45,21 +45,22 @@ proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, 
   ## Parse an object.
   tableImpl(format, reader, v, K, V)
 
-proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var TableRef[K, V]) =
-  ## Parse an object.
-  tableImpl(format, reader, v, K, V)
-
-proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var OrderedTableRef[K, V]) =
-  ## Parse an object.
-  tableImpl(format, reader, v, K, V)
-
 proc read*[K: string | enum](format: JsonReadFormat, reader: var HoloReader, v: var CountTable[K]) =
   ## Parse an object.
   tableImpl(format, reader, v, K, int)
 
-proc read*[K: string | enum](format: JsonReadFormat, reader: var HoloReader, v: var CountTableRef[K]) =
-  ## Parse an object.
-  tableImpl(format, reader, v, K, int)
+when false: # should not need anymore with the `ref object` overload disabled
+  proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var TableRef[K, V]) =
+    ## Parse an object.
+    tableImpl(format, reader, v, K, V)
+
+  proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var OrderedTableRef[K, V]) =
+    ## Parse an object.
+    tableImpl(format, reader, v, K, V)
+
+  proc read*[K: string | enum](format: JsonReadFormat, reader: var HoloReader, v: var CountTableRef[K]) =
+    ## Parse an object.
+    tableImpl(format, reader, v, K, int)
 
 proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var HashSet[T]) =
   ## Parses `HashSet`.

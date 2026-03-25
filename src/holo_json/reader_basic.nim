@@ -12,10 +12,10 @@ proc error*(reader: var HoloReader, msg: string) {.inline.} =
 
 proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var seq[T])
 proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.}
-proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader, v: var T)
+proc read*[T: object](format: JsonReadFormat, reader: var HoloReader, v: var T)
 proc read*[T: tuple](format: JsonReadFormat, reader: var HoloReader, v: var T)
 proc read*[T: array](format: JsonReadFormat, reader: var HoloReader, v: var T)
-proc read*[T: not object](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.inline.}
+proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.inline.}
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode)
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var string) {.inline.}
 proc read*[T: distinct](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.}
@@ -334,7 +334,7 @@ proc read*[T: array](format: JsonReadFormat, reader: var HoloReader, v: var T) =
       reader.parseError("expected comma")
   skipChar(reader, ']')
 
-proc read*[T: not object](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.inline.} =
+proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var ref T) {.inline.} =
   mixin read
   skipSpace(reader)
   if reader.nextMatch("null"):
@@ -357,20 +357,26 @@ proc crudeReplaceIdent(n: NimNode, name: string, val: NimNode): NimNode =
       result.add(crudeReplaceIdent(a, name, val))
 
 proc finishObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
-  ## hook called into when an object/ref object/named tuple has finished reading all fields
+  ## hook called into when an object or named tuple has finished reading all fields
+  ##
+  ## does not work for ref objects, define it for their deref types,
+  ## see `derefType` in `test_objects` for an easy way to do this
   discard
 
 type HasNormalizer* = concept
   ## implement to normalize field names when reading in json, i.e. for style insensitivity
   proc normalizeField(_: typedesc[Self], format: type JsonReadFormat, name: string): string
 
-template implNormalizer[T: HasNormalizer, F](_: typedesc[T], format: F): untyped =
+template implNormalizer[T: HasNormalizer](_: typedesc[T]): untyped =
   mixin normalizeField
   template normalizerImpl(s: string): string {.inject.} =
-    normalizeField(`T`, `F`, s)
+    normalizeField(`T`, JsonReadFormat, s)
 
-template implNormalizer[T: not HasNormalizer, F](_: typedesc[T], format: F): untyped =
-  const normalizerImpl {.inject.} = nil
+template implNormalizer[T: not HasNormalizer](_: typedesc[T]): untyped =
+  when (ref T) is HasNormalizer:
+    implNormalizer(ref T)
+  else:
+    const normalizerImpl {.inject.} = nil
 
 proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
   mixin read
@@ -401,7 +407,7 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: var HoloReader, v: var 
           read(format, reader, v2)
           f = v2
         const mappings = getActualFieldMappings(T, HoloJson)
-        implNormalizer(T, format)
+        implNormalizer(T)
         mapFieldInput(v, key, mappings, normalizerImpl, jsonDefaultInputNames, onFieldInput):
           discard skipValue(format, reader)
     skipSpace(reader)
@@ -439,7 +445,7 @@ proc readEnumString*[T: enum](format: JsonReadFormat, reader: var HoloReader, _:
     template onEnumInput(e: T) =
       result = e
     const mappings = getActualFieldMappings(T, HoloJson)
-    implNormalizer(T, format)
+    implNormalizer(T)
     mapEnumFieldInput(T, strV, mappings, normalizerImpl, onEnumInput):
       reader.error("could not parse enum of type " & $T & " from string: " & $strV)
   else:
@@ -461,13 +467,17 @@ proc read*[T: enum](format: JsonReadFormat, reader: var HoloReader, v: var T) {.
     reader.unexpectedError(format, "enum value of type " & $T)
 
 proc startObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var T) {.inline.} =
-  ## hook called into when an object/ref object/named tuple are about to read their fields
+  ## hook called into when an object or named tuple are about to read their fields
+  ##
+  ## does not work for ref objects, define it for their deref types,
+  ## see `derefType` in `test_objects` for an easy way to do this
   discard
 
 template initObj[T](v: var T) =
   mixin startObjectRead
-  when v is ref:
-    new(v)
+  when false: # refs disabled
+    when v is ref:
+      new(v)
   startObjectRead(format, reader, v)
 
 template initObjVariant[T](v: var T, discrimField, discrimValue) =
@@ -475,16 +485,17 @@ template initObjVariant[T](v: var T, discrimField, discrimValue) =
   v = T(`discrimField`: `discrimValue`)
   startObjectRead(format, reader, v)
 
-proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader, v: var T) =
-  ## Parse an object or ref object.
+proc read*[T: object](format: JsonReadFormat, reader: var HoloReader, v: var T) =
+  ## Parse an object.
   privateAccess(T) # important
   mixin read
   skipSpace(reader)
-  when T is ref: # changed from original jsony, which allows object
-    # XXX maybe config option? has test
-    if reader.nextMatch("null"):
-      v = nil # changed from original jsony, where it does nothing
-      return
+  when false: # refs disabled
+    when T is ref: # changed from original jsony, which allows object
+      # XXX maybe config option? has test
+      if reader.nextMatch("null"):
+        v = nil # changed from original jsony, where it does nothing
+        return
   expectChar(format, reader, '{')
   when not hasVariants(T):
     initObj(v)
@@ -517,7 +528,7 @@ proc read*[T: object|ref object](format: JsonReadFormat, reader: var HoloReader,
             initObjVariant(v, `vf`, `discrim`)
             break
           const mappings = getActualFieldMappings(T, HoloJson)
-          implNormalizer(T, format)
+          implNormalizer(T)
           mapInputVariantFieldName(T, key,
             mappings, normalizerImpl, jsonDefaultInputNames,
             onInnerField, onVariantField): discard
