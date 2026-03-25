@@ -475,8 +475,9 @@ proc startObjectRead*[T](format: JsonReadFormat, reader: var HoloReader, v: var 
 
 template initObj[T](v: var T) =
   mixin startObjectRead
-  when v is ref:
-    new(v)
+  when false: # refs disabled
+    when v is ref:
+      new(v)
   startObjectRead(format, reader, v)
 
 template initObjVariant[T](v: var T, discrimField, discrimValue) =
@@ -489,11 +490,12 @@ proc read*[T: object](format: JsonReadFormat, reader: var HoloReader, v: var T) 
   privateAccess(T) # important
   mixin read
   skipSpace(reader)
-  when T is ref: # changed from original jsony, which allows object
-    # XXX maybe config option? has test
-    if reader.nextMatch("null"):
-      v = nil # changed from original jsony, where it does nothing
-      return
+  when false: # refs disabled
+    when T is ref: # changed from original jsony, which allows object
+      # XXX maybe config option? has test
+      if reader.nextMatch("null"):
+        v = nil # changed from original jsony, where it does nothing
+        return
   expectChar(format, reader, '{')
   when not hasVariants(T):
     initObj(v)

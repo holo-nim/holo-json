@@ -446,10 +446,11 @@ template dumpKey(writer: var HoloWriter, v: static string) =
 
 proc dump*[T: object](format: JsonDumpFormat, writer: var HoloWriter, v: T) =
   mixin dump
-  when T is ref:
-    if v.isNil:
-      writer.write "null"
-      return
+  when false: # refs disabled
+    when T is ref:
+      if v.isNil:
+        writer.write "null"
+        return
   writer.write '{'
   var needsComma = false
   when jsonyPairsObject and compiles(for k, e in v.pairs: discard):
