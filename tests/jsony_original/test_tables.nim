@@ -79,7 +79,7 @@ block: # issue 52
   doAssert t == a
 
 block: # non string table:
-  var s = "{}"
+  var s = toJson(initTable[int, int]())
   var v = s.fromJson(Table[int, int])
   doAssert v.len == 0
 

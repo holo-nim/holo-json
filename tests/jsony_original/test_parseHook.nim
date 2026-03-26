@@ -109,7 +109,7 @@ proc read(format: JsonReadFormat, reader: var HoloReader, v: var seq[Header]) =
         break
     skipChar(reader, '}')
   else:
-    for key in readObject(format, reader):
+    for key in readObject[string](format, reader):
       var value: string
       read(format, reader, value)
       v.add(Header(key: key, value: value))

@@ -141,7 +141,7 @@ doAssert snakeCase("color_rule") == "color_rule"
 doAssert snakeCase("httpGet") == "http_get"
 doAssert snakeCase("restAPI") == "rest_api"
 
-import holo_flow/[holo_reader, holo_writer]
+import holo_flow/holo_reader
 
 type
   Entry5 = object

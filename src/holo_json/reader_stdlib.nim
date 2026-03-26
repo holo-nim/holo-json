@@ -1,6 +1,6 @@
 ## `read` hooks for stdlib types
 
-import ./[common, reader_basic, parser], holo_flow/holo_reader, std/[options, tables, sets, json, parseutils]
+import ./[common, reader_basic, parser, read_helpers], holo_flow/holo_reader, std/[options, tables, sets, json, parseutils]
 
 proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode) =
   ## Parses a regular json node.
@@ -11,7 +11,7 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode) =
     reader.unexpectedError(format, "json value")
   of JsonObject:
     v = newJObject()
-    for k in readObject(format, reader):
+    for k in readObject[string](format, reader):
       var e: JsonNode
       read(format, reader, e)
       v[k] = e
@@ -79,7 +79,7 @@ proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var Option[T]) 
   read(format, reader, e)
   v = some(e)
 
-template tableImpl(format, reader, v, K, V) =
+template stringTableImpl(format, reader, v, K, V) =
   mixin read
   when v is ref:
     if reader.nextMatch("null"):
@@ -105,15 +105,46 @@ template tableImpl(format, reader, v, K, V) =
 
 proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var Table[K, V]) =
   ## Parse an object.
-  tableImpl(format, reader, v, K, V)
+  stringTableImpl(format, reader, v, K, V)
 
 proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var OrderedTable[K, V]) =
   ## Parse an object.
-  tableImpl(format, reader, v, K, V)
+  stringTableImpl(format, reader, v, K, V)
 
 proc read*[K: string | enum](format: JsonReadFormat, reader: var HoloReader, v: var CountTable[K]) =
   ## Parse an object.
-  tableImpl(format, reader, v, K, int)
+  stringTableImpl(format, reader, v, K, int)
+
+template anyTableImpl(format, reader, tab, K, V) =
+  mixin read
+  when tab is ref:
+    if reader.nextMatch("null"):
+      # this is added this time
+      return
+    new(tab)
+  for _ in readArray(format, reader):
+    var k: K
+    var v: V
+    for pairI in readArray(format, reader):
+      if pairI == 0:
+        read(format, reader, k)
+      elif pairI == 1:
+        read(format, reader, v)
+      else:
+        reader.error("expected table key/value pair, but extra element found")
+    tab[k] = v
+
+proc read*[K: not (string | enum), V](format: JsonReadFormat, reader: var HoloReader, tab: var Table[K, V]) =
+  ## Parse a normal table.
+  anyTableImpl(format, reader, tab, K, V)
+
+proc read*[K: not (string | enum), V](format: JsonReadFormat, reader: var HoloReader, tab: var OrderedTable[K, V]) =
+  ## Parse a normal table.
+  anyTableImpl(format, reader, tab, K, V)
+
+proc read*[K: not (string | enum)](format: JsonReadFormat, reader: var HoloReader, tab: var CountTable[K]) =
+  ## Parse a normal table.
+  anyTableImpl(format, reader, tab, K, int)
 
 when false: # should not need anymore with the `ref object` overload disabled
   proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var TableRef[K, V]) =
