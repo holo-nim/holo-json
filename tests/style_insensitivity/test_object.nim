@@ -1,4 +1,4 @@
-import holo_json, std/strutils, holo_map/caseutils
+import holo_json, std/strutils
 
 type
   Foo {.inheritable.} = object

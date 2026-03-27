@@ -1,6 +1,6 @@
 import holo_json
 
-proc dump*(format: JsonDumpFormat, s: var HoloWriter, v: object) =
+proc dump*(format: JsonDumpFormat, s: JsonWriterArg, v: object) =
   s.write '{'
   var i = 0
   # Normal objects.

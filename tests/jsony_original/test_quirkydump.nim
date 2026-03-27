@@ -22,11 +22,11 @@ proc camel2snake*(s: string): string =
     else:
       result.add(s[i])
 
-template dumpKey(s: var HoloWriter, v: string) =
+template dumpKey(s: JsonWriterArg, v: string) =
   const v2 = v.camel2snake().toJson() & ":"
   s.write v2
 
-proc dump*(format: JsonDumpFormat, s: var HoloWriter, v: object) =
+proc dump*(format: JsonDumpFormat, s: JsonWriterArg, v: object) =
   s.write '{'
   var i = 0
   when compiles(for k, e in v.pairs: discard):

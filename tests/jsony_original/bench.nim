@@ -47,7 +47,7 @@ timeIt "holo_json", 100:
   keep holo_json.fromJson(treeStr, Node)
 
 timeIt "holo_json no line column", 100:
-  var reader = initHoloReader(doLineColumn = false)
+  var reader = initJsonReader(doLineColumn = false)
   reader.startRead(treeStr)
   var s: Node
   holo_json.readJson(reader, s)

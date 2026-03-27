@@ -22,7 +22,7 @@ block:
       keep holo_json.fromJson(jsonStr, string)
 
   timeIt "holo_json no line column", 100:
-    var reader = initHoloReader(doLineColumn = false)
+    var reader = initJsonReader(doLineColumn = false)
     for i in 0 ..< 1000:
       reader.startRead(jsonStr)
       var s: string
@@ -52,7 +52,7 @@ block:
       keep holo_json.fromJson(jsonStr, Node)
 
   timeIt "holo_json no line column", 100:
-    var reader = initHoloReader(doLineColumn = false)
+    var reader = initJsonReader(doLineColumn = false)
     for i in 0 ..< 1000:
       reader.startRead(jsonStr)
       var s: Node
@@ -82,7 +82,7 @@ block:
     keep holo_json.fromJson(jsonStr, seq[Node])
 
   timeIt "holo_json no line column", 100:
-    var reader = initHoloReader(doLineColumn = false)
+    var reader = initJsonReader(doLineColumn = false)
     reader.startRead(jsonStr)
     var s: seq[Node]
     holo_json.readJson(reader, s)
@@ -109,7 +109,7 @@ block:
       keep holo_json.toJson(number42)
 
   timeIt "holo_json writer", 100:
-    var writer = initHoloWriter()
+    var writer = initJsonWriter()
     for i in 0 ..< 1000:
       writer.startWrite()
       writer.dumpJson(number42)
@@ -141,7 +141,7 @@ block:
       keep holo_json.toJson(hello)
 
   timeIt "holo_json writer", 100:
-    var writer = initHoloWriter()
+    var writer = initJsonWriter()
     for i in 0 ..< 1000:
       writer.startWrite()
       writer.dumpJson(hello)
