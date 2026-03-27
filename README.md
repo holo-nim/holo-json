@@ -2,7 +2,7 @@
 
 JSON library based on the codebase and structure of [jsony](https://github.com/treeform/jsony) by [treeform](https://github.com/treeform), overhauled for better usability in applications. I am not keen on licenses so if I am missing any credit anywhere for forking jsony I am willing to fix it.
 
-Parsing is about 2x slower than original jsony, presumably due to the level of abstraction but I can't pinpoint why. (double pointer dereference for reading?) Still faster than the other libraries in the benchmarks though. Serialization seems to be about the same or faster in some cases. Also still works in JS and compile time, these are tested.
+Performance comparison with jsony is [here](https://github.com/holo-nim/holo-json/issues/24). Also still works in JS and compile time, these are tested.
 
 Not compatible with jsony's parsing/conversion behavior.
 
@@ -20,7 +20,7 @@ Not compatible with jsony's parsing/conversion behavior.
   # old:
   proc parseHook(s: string, i: var int, obj: Foo) = ...
   # new:
-  proc read(format: JsonReadFormat, reader: var HoloReader, obj: Foo) = ...
+  proc read(format: JsonReadFormat, reader: JsonReaderArg, obj: Foo) = ...
   ```
 
   This might look cluttered, but the goal is also to reduce the number of cases where a custom hook has to be written in the first place, as will be shown below.
@@ -33,12 +33,12 @@ Not compatible with jsony's parsing/conversion behavior.
     value: string
 
   # new:
-  proc read(format: JsonReadFormat, reader: var HoloReader, v: var seq[Header]) =
-    for key in readObject(format, reader):
+  proc read(format: JsonReadFormat, reader: JsonReaderArg, v: var seq[Header]) =
+    for key in readObject[string](format, reader):
       var value: string
       read(format, reader, value)
       v.add(Header(key: key, value: value))
-  proc dump(format: JsonDumpFormat, writer: var HoloWriter, v: seq[Header]) =
+  proc dump(format: JsonDumpFormat, writer: JsonWriterArg, v: seq[Header]) =
     var obj: ObjectDump
     format.withObjectDump(writer, obj):
       for header in v:
@@ -93,8 +93,8 @@ Not compatible with jsony's parsing/conversion behavior.
   import holo_map/fields
   type Node = ref object
     kind: string
-  proc fieldMappings(T: type Node, group: static MappingGroup): FieldMappingPairs =
-    # note: expected to be complete
+  proc getFieldMappings(T: type Node, group: static MappingGroup): FieldMappingPairs =
+    # note: expected to be complete, can call getDefaultFieldMappings and modify it instead
     result = @{
       "kind": toFieldMapping "type"
     }
@@ -109,22 +109,39 @@ Not compatible with jsony's parsing/conversion behavior.
 
   One potential caveat is that this could make compile times worse but the macro code for this is not particularly complex. The `fields` magic can't be much more efficient anyway.
 
-* Using `holo-map` allows to generalize enough that this library is easier to copy for another data format,
+* Using the holo-map library allows to generalize enough that this library is easier to copy for another data format,
   and switching between other data formats and this library is easy as well.
   Even the reader/writer types can be abstracted over thanks to the `format` argument.
 
 * Reading/dumping behavior is modularized, you can import one without the other. The default hooks for stdlib types like tables and sets are also moved to their own modules so they can be selectively not imported.
 
+* The runtime object hooks from jsony (adapted `startObjectRead`/`finishObjectRead` as well as compatibility-only `renameHook` and `skipHook`) no longer work when defined for ref objects. Instead they have to be defined on the dereferenced object type, which can be done easily like so:
+
+  ```nim
+  type Foo = ref object
+  template derefType[T](_: typedesc[ref T]): typedesc[T] = T
+  proc startObjectRead(format: JsonReadFormat, reader: JsonReaderArg, foo: var derefType(Foo)) = ...
+  ```
+
+  This is because the `read`/`dump` hooks for objects are no longer defined for ref objects, only normal objects.
+  Ref objects instead go through the normal `ref` hook. This is so that `ref Foo` now works properly if
+  `Foo` is an object with custom hooks. There were other ways to deal with this but the other `ref` hook
+  also needed to exclude any constraints put on the `ref object` hook with `not` to avoid ambiguities.
+
+  However the compile time hooks still work when defined on a ref object, i.e. `normalizeField` and `getFieldMappings`.
+  This is because there are wrappers around them that also check for `ref T`, which is not possible with the runtime hooks.
+
 ### Data handling
 
-* Instead of working on bare strings, "dynamic buffers" from [holo-flow](https://github.com/holo-nim/holo-flow) are used.
+* Instead of working on bare strings, reader and writer types from [holo-flow](https://github.com/holo-nim/holo-flow) are used. These keep the lightness of strings and allow loading from/flushing to streams as necessary.
 
 * The existence of the format and reader/writer objects allows for line/column handling and options for different behavior, a potential option is for pretty output but is not implemented yet.
 
+* Parsing errors and value errors are properly separated. When a value is encountered that is unexpected by the current type, the full raw JSON value will be parsed (skipped) before giving a value error. If that single value cannot be parsed, a parsing error is given. This does not mean that types are not allowed to override the JSON grammar, but error reporting prioritizes valid JSON.
+
 ### Data representation
 
-* Object field names convert to snake case by default instead of using the original name, and only accept this snake case version rather than either snake case or the original name. Outputting snake case by default is to make the most common real world use cases more convenient, not reading the original name is to not unnecessarily complicate the generated case statements. The original jsony behavior can be brought back with `-d:jsonyFieldCompatibility`, and this behavior is represented by constants in `common.nim`.
-  * Not the case for enums though.
+#### New
 
 * Object variants support detecting from inner fields of variant branches without needing the variant field as in original jsony.
 
@@ -150,6 +167,11 @@ Not compatible with jsony's parsing/conversion behavior.
 
 * `\x` is optionally supported for nicer byte strings (I guess if base64 isn't available).
 
+#### Breaking
+
+* Object field names convert to snake case by default instead of using the original name, and only accept this snake case version rather than either snake case or the original name. Outputting snake case by default is to make the most common real world use cases more convenient, not reading the original name is to not unnecessarily complicate the generated case statements. The original jsony behavior can be brought back with `-d:jsonyFieldCompatibility`, and this behavior is represented by constants in `common.nim`.
+  * Not the case for enums though.
+
 * Some weird `null` handling is removed: Non-ref objects and strings accepted `null` and interpreted it to mean "empty", as in reading nothing. Now it is allowed only where an explicit `null` value exists (like `nil` or `None`). The old behavior might become a config option but it is hard to justify for specifically objects and strings.
 
-* The generalized `pairs` dumper for objects is removed as it causes problems when the key isn't a string, instead there is a manual `string | enum` table implementation in `dumper_stdlib` same as the read hook from the original jsony. This behavior can be brought back with `-d:jsonyPairsObject` but is not recommended.
+* The generalized `pairs` dumper for objects is removed as it causes problems when the key isn't a string, instead there is a manual `string | enum` table implementation in `dump_stdlib` same as the read hook from the original jsony. This behavior can be brought back with `-d:jsonyPairsObject` but is not recommended.

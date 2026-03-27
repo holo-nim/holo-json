@@ -33,5 +33,5 @@ block:
 
 block:
   var s = "[1, 2, 3] asdf"
-  doAssertRaises CatchableError:
+  doAssertRaises JsonParseError:
     discard s.fromJson(array[3, int])

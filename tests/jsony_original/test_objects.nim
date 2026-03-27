@@ -50,8 +50,9 @@ type
     id: string
     bar: Bar4
 
-proc startObjectRead(format: JsonReadFormat, reader: var HoloReader, foo: var Foo4) =
-  foo = Foo4()
+template derefType[T](_: typedesc[ref T]): type T = T
+
+proc startObjectRead(format: JsonReadFormat, reader: JsonReaderArg, foo: var derefType(Foo4)) =
   foo.visible = "yes"
 
 block:
@@ -67,7 +68,7 @@ type
   Foo5 = object
     visible: string
     id: string
-proc startObjectRead(format: JsonReadFormat, reader: var HoloReader, foo: var Foo5) =
+proc startObjectRead(format: JsonReadFormat, reader: JsonReaderArg, foo: var Foo5) =
   foo.visible = "yes"
 
 block:
@@ -140,18 +141,18 @@ doAssert snakeCase("color_rule") == "color_rule"
 doAssert snakeCase("httpGet") == "http_get"
 doAssert snakeCase("restAPI") == "rest_api"
 
-import holo_flow/[holo_reader, holo_writer]
+import holo_json/read_common
 
 type
   Entry5 = object
     color: string
   Nullable[T] = object
     inner: T
-proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var Nullable[T]) =
+proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var Nullable[T]) =
   if reader.nextMatch("null"):
     return
   read(format, reader, v.inner)
-proc dump*[T](format: JsonDumpFormat, writer: var HoloWriter, v: Nullable[T]) =
+proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: Nullable[T]) =
   if v.inner == default(T):
     writer.write "null"
     return
@@ -173,7 +174,7 @@ type Sizer = object
   size: int
   originalSize: int
 
-proc finishObjectRead(format: JsonReadFormat, reader: var HoloReader, v: var Sizer) =
+proc finishObjectRead(format: JsonReadFormat, reader: JsonReaderArg, v: var Sizer) =
   v.originalSize = v.size
 
 var sizer = """{"size":10}""".fromJson(Sizer)

@@ -9,6 +9,12 @@ const holoJsonStringCopyMem* {.booldefine.} = true
   ## uses `copyMem` to copy batched string characters whenever available,
   ## given `holoJsonBatchStringAdd` is enabled
 
+const holoJsonObjectStyleInsensitivity* {.booldefine.} = false
+  ## defines a normalizer hook for object fields to implement style insensitivity
+
+const holoJsonEnumStyleInsensitivity* {.booldefine.} = false
+  ## defines a normalizer hook for enum fields to implement style insensitivity
+
 type
   JsonReadFormat* = object
     handleUtf16*: bool = true
@@ -54,15 +60,17 @@ const jsonyPairsObject* {.booldefine.} = false
 
 type
   RawJson* = distinct string
-  JsonValueError* = object of ValueError
-  JsonParseError* = object of CatchableError
-    ## error that signifies a violation of json grammar,
-    ## currently not used in all such cases
+  JsonError* = object of ValueError
+  JsonValueError* = object of JsonError
+    ## error for when a value can be parsed,
+    ## but could not be fit into the expected value
+  JsonParseError* = object of JsonError
+    ## error for invalid json grammar according to the given format
 
-import holo_map/fields
-export fields
+import holo_map/[groups, fields]
+export groups, fields
 
-const Json* = MappingGroup"json"
+const HoloJson* = MappingGroup(id: "holo-json", parents: @[Json])
 const jsonDefaultInputNames* = 
   if jsonyFieldCompatibility: @[verbatim(), snakeCase()]
   else: @[snakeCase()]

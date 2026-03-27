@@ -5,7 +5,7 @@ type
     a {.mapping: "x".}: string
     case b {.mapping(Json, "y").}: uint8 #range[0..5] # https://github.com/nim-lang/Nim/pull/25585
     of 0..2:
-      c {.mapping: "tooGeneral", mapping(Json, "z"), mapping: "tooGeneralAgain".}: int
+      c {.mapping: "tooGeneral", mapping(Json, "better"), mapping(HoloJson, "z"), mapping(Json, "worse"), mapping: "tooGeneralAgain".}: int
       #when true: # nim limitation
       d {.mapping: "t".}: bool
     else:

@@ -1,8 +1,8 @@
 import holo_json
 
-doAssertRaises CatchableError:
+doAssertRaises JsonParseError:
   var
-    reader = initHoloReader()
+    reader = initJsonReader()
     n: uint64
   readJson(reader, n)
 
@@ -13,7 +13,7 @@ for i in 0 .. 10000:
 
 for i in 0 .. 10000:
   var s = $i
-  var reader = initHoloReader()
+  var reader = initJsonReader()
   reader.startRead(s)
   var v: int
   readJson(reader, v)

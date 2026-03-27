@@ -7,7 +7,7 @@ type Fraction = object
   numerator: int
   denominator: int
 
-proc read(format: JsonReadFormat, reader: var HoloReader, v: var Fraction) =
+proc read(format: JsonReadFormat, reader: JsonReaderArg, v: var Fraction) =
   ## Instead of looking for fraction object look for a string.
   var str: string
   read(format, reader, str)
@@ -21,7 +21,7 @@ doAssert frac.numerator == 1
 doAssert frac.denominator == 3
 
 when doTimes:
-  proc read(format: JsonReadFormat, reader: var HoloReader, v: var DateTime) =
+  proc read(format: JsonReadFormat, reader: JsonReaderArg, v: var DateTime) =
     var str: string
     read(format, reader, str)
     v = parse(str, "yyyy-MM-dd hh:mm:ss")
@@ -40,7 +40,7 @@ let data = """{
   "3": {"count":99, "filled": 99}
 }"""
 
-proc read(format: JsonReadFormat, reader: var HoloReader, v: var seq[Entry]) =
+proc read(format: JsonReadFormat, reader: JsonReaderArg, v: var seq[Entry]) =
   var table: Table[string, Entry]
   read(format, reader, table)
   for k, entry in table.mpairs:
@@ -71,7 +71,7 @@ let data2 = """{
   "changes": [1, 2, "hi"]
 }"""
 
-proc read(format: JsonReadFormat, reader: var HoloReader, v: var Entry2) =
+proc read(format: JsonReadFormat, reader: JsonReaderArg, v: var Entry2) =
   var entry: JsonNode
   read(format, reader, entry)
   v = Entry2()
@@ -90,26 +90,26 @@ type Header = object
   key: string
   value: string
 
-proc read(format: JsonReadFormat, reader: var HoloReader, v: var seq[Header]) =
+proc read(format: JsonReadFormat, reader: JsonReaderArg, v: var seq[Header]) =
   when false: # to not import holo_reader
-    eatChar(reader, '{')
+    expectChar(reader, '{')
     while reader.hasNext():
-      eatSpace(reader)
+      skipSpace(reader)
       if reader.peekMatch('}'):
         break
       var key, value: string
       read(format, reader, key)
-      eatChar(reader, ':')
+      skipChar(reader, ':')
       read(format, reader, value)
       v.add(Header(key: key, value: value))
-      eatSpace(reader)
+      skipSpace(reader)
       if reader.nextMatch(','):
         discard
       else:
         break
-    eatChar(reader, '}')
+    skipChar(reader, '}')
   else:
-    for key in readObject(format, reader):
+    for key in readObject[string](format, reader):
       var value: string
       read(format, reader, value)
       v.add(Header(key: key, value: value))
