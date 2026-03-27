@@ -1,12 +1,10 @@
-import ./common, holo_flow/holo_reader, std/[strutils, unicode]
+import ./[common, reader_common], std/[strutils, unicode]
 
-type ReaderType* = var HoloReader
-
-proc parseError*(reader: var HoloReader, msg: string) {.inline.} =
+proc parseError*(reader: JsonReaderArg, msg: string) {.inline.} =
   ## Shortcut to raise an exception.
-  raise newException(JsonParseError, "(" & $reader.line & ", " & $reader.column & ") " & msg)
+  raise newException(JsonParseError, "(" & $reader.state.line & ", " & $reader.state.column & ") " & msg)
 
-proc skipSpace*(reader: var HoloReader) {.inline.} =
+proc skipSpace*(reader: JsonReaderArg) {.inline.} =
   ## Will consume whitespace.
   for c in reader.peekNext():
     if c notin Whitespace:
@@ -26,7 +24,7 @@ type
     kind*: JsonValueKind
     raw*: RawJson
 
-proc peekRawKind*(format: JsonReadFormat, reader: var HoloReader): JsonValueKind =
+proc peekRawKind*(format: JsonReadFormat, reader: JsonReaderArg): JsonValueKind =
   ## guesses which kind the next object is, assumes spaces are skipped
   ## not guaranteed to be accurate, all numbers are assumed float
   let start = reader.peekOrZero()
@@ -69,13 +67,13 @@ proc peekRawKind*(format: JsonReadFormat, reader: var HoloReader): JsonValueKind
     msg.addQuoted(start)
     reader.parseError(msg)
 
-proc peekRawKindSkipSpace*(format: JsonReadFormat, reader: var HoloReader): JsonValueKind {.inline.} =
+proc peekRawKindSkipSpace*(format: JsonReadFormat, reader: JsonReaderArg): JsonValueKind {.inline.} =
   ## guesses which kind the next object is, skips spaces
   ## not guaranteed to be accurate, all numbers are assumed float
   skipSpace(reader)
   result = peekRawKind(format, reader)
 
-proc skipChar*(reader: var HoloReader, c: char) {.inline.} =
+proc skipChar*(reader: JsonReaderArg, c: char) {.inline.} =
   ## Will consume space before and then the character `c`.
   ## Will raise a parsing error if `c` is not found.
   skipSpace(reader)
@@ -85,7 +83,7 @@ proc skipChar*(reader: var HoloReader, c: char) {.inline.} =
   elif c != c2:
     reader.parseError("Expected " & c & " but got " & c2 & " instead.")
 
-proc skipNumber*(format: JsonReadFormat, reader: var HoloReader): int =
+proc skipNumber*(format: JsonReadFormat, reader: JsonReaderArg): int =
   ## returns start position in buffer
   result = -1
   let start = reader.bufferPos
@@ -130,7 +128,7 @@ proc skipNumber*(format: JsonReadFormat, reader: var HoloReader): int =
   if reader.bufferPos != start:
     result = start + 1
 
-proc validRune*(reader: var HoloReader, rune: var Rune, start: char): int =
+proc validRune*(reader: JsonReaderArg, rune: var Rune, start: char): int =
   # returns number of skipped bytes
   # Based on fastRuneAt from std/unicode
   result = 0
@@ -180,7 +178,7 @@ proc validRune*(reader: var HoloReader, rune: var Rune, start: char): int =
           (uint(bytes[3]) and ones(6))
         )
 
-proc parseHexInt*[I](reader: var HoloReader, a: array[I, char]): int {.inline.} =
+proc parseHexInt*[I](reader: JsonReaderArg, a: array[I, char]): int {.inline.} =
   result = 0
   for i in 0 ..< a.len:
     let c = a[i]
@@ -190,7 +188,7 @@ proc parseHexInt*[I](reader: var HoloReader, a: array[I, char]): int {.inline.} 
     of 'a'..'f': result = (result shl 4) or (10 + c.int - 'a'.int)
     else: reader.parseError("expected hex char in escape sequence, got " & $c)
 
-proc parseUnicodeEscape*(format: JsonReadFormat, reader: var HoloReader): int =
+proc parseUnicodeEscape*(format: JsonReadFormat, reader: JsonReaderArg): int =
   #reader.unsafeNext() # u already skipped
   var hexStr: array[4, char]
   if not reader.peek(hexStr):
@@ -213,7 +211,7 @@ proc parseUnicodeEscape*(format: JsonReadFormat, reader: var HoloReader): int =
       if (nextRune and 0xfc00) == 0xdc00:
         result = 0x10000 + (((result - 0xd800) shl 10) or (nextRune - 0xdc00))
 
-proc parseByteEscape*(reader: var HoloReader): byte =
+proc parseByteEscape*(reader: JsonReaderArg): byte =
   #reader.unsafeNext() # x already skipped
   var hexStr: array[2, char]
   if not reader.peek(hexStr):
@@ -221,7 +219,7 @@ proc parseByteEscape*(reader: var HoloReader): byte =
   reader.unsafeNextBy(hexStr.len)
   result = parseHexInt(reader, hexStr).byte
 
-proc parseString*(format: JsonReadFormat, reader: var HoloReader, quoteSkipped = false): string =
+proc parseString*(format: JsonReadFormat, reader: JsonReaderArg, quoteSkipped = false): string =
   if not quoteSkipped: skipChar(reader, '"')
 
   const doCopy = holoJsonBatchStringAdd
@@ -243,13 +241,13 @@ proc parseString*(format: JsonReadFormat, reader: var HoloReader, quoteSkipped =
           result.setLen(vLen + numBytes)
           when nimvm:
             for p in 0 ..< numBytes:
-              result[vLen + p] = reader.buffer[copyStart + p]
+              result[vLen + p] = reader.currentBuffer[copyStart + p]
           else:
             when not holoJsonStringCopyMem or defined(js) or defined(nimscript):
               for p in 0 ..< numBytes:
-                result[vLen + p] = reader.buffer[copyStart + p]
+                result[vLen + p] = reader.currentBuffer[copyStart + p]
             else:
-              copyMem(result[vLen].addr, reader.buffer[copyStart].unsafeAddr, numBytes)
+              copyMem(result[vLen].addr, reader.currentBuffer[copyStart].unsafeAddr, numBytes)
         reader.unlockBuffer()
         inCopy = false
 
@@ -302,7 +300,7 @@ proc parseString*(format: JsonReadFormat, reader: var HoloReader, quoteSkipped =
       finishCopy()
   skipChar(reader, '"')
 
-proc skipValue*(format: JsonReadFormat, reader: var HoloReader): int =
+proc skipValue*(format: JsonReadFormat, reader: JsonReaderArg): int =
   ## Used to skip values of extra fields, or wrongly typed values for errors.
   ## returns start position in buffer
   result = -1
@@ -361,25 +359,25 @@ proc skipValue*(format: JsonReadFormat, reader: var HoloReader): int =
     result = reader.bufferPos + 1
     unsafeNextBy(reader, "-Infinity".len)
 
-proc readRawValue*(format: JsonReadFormat, reader: var HoloReader): RawJsonValue =
+proc readRawValue*(format: JsonReadFormat, reader: JsonReaderArg): RawJsonValue =
   reader.lockBuffer()
   try:
     skipSpace(reader)
     let kind = peekRawKind(format, reader)
     let firstPos = skipValue(format, reader)
-    result = RawJsonValue(kind: kind, raw: reader.buffer[firstPos .. reader.bufferPos].RawJson)
+    result = RawJsonValue(kind: kind, raw: reader.currentBuffer[firstPos .. reader.bufferPos].RawJson)
   finally:
     reader.unlockBuffer()
 
-proc peekRawValueSkipSpace*(format: JsonReadFormat, reader: var HoloReader): RawJsonValue =
+proc peekRawValueSkipSpace*(format: JsonReadFormat, reader: JsonReaderArg): RawJsonValue =
   ## reads a full raw json value, relatively inefficient and mostly meant for errors
-  let (savedPos, savedLine, savedCol) = (reader.bufferPos, reader.line, reader.column)
+  let savedState = reader.state
   reader.lockBuffer()
   try:
     skipSpace(reader)
     let kind = peekRawKind(format, reader)
     let firstPos = skipValue(format, reader)
-    result = RawJsonValue(kind: kind, raw: reader.buffer[firstPos .. reader.bufferPos].RawJson)
+    result = RawJsonValue(kind: kind, raw: reader.currentBuffer[firstPos .. reader.bufferPos].RawJson)
   finally:
     reader.unlockBuffer()
-    (reader.bufferPos, reader.line, reader.column) = (savedPos, savedLine, savedCol)
+    reader.state = savedState

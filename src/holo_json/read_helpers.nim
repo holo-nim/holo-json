@@ -1,12 +1,12 @@
-import ./[common, parser], holo_flow/holo_reader, std/strbasics
+import ./[common, reader_common, parser], std/strbasics
 export skipSpace, JsonValueKind, RawJsonValue, peekRawKind, peekRawKindSkipSpace, skipValue, readRawValue, peekRawValueSkipSpace
-export HoloReader, initHoloReader, startRead
+export JsonReader, initJsonReader, startRead
 
-proc error*(reader: var HoloReader, msg: string) {.inline.} =
+proc error*(reader: JsonReaderArg, msg: string) {.inline.} =
   ## Shortcut to raise an exception.
-  raise newException(JsonValueError, "(" & $reader.line & ", " & $reader.column & ") " & msg)
+  raise newException(JsonValueError, "(" & $reader.state.line & ", " & $reader.state.column & ") " & msg)
 
-proc endError*(reader: var HoloReader, expected: string) {.inline.} =
+proc endError*(reader: JsonReaderArg, expected: string) {.inline.} =
   reader.parseError("expected " & expected & " but end reached")
 
 const jsonUnexpectedValueErrorLength* {.intdefine.} = 100
@@ -30,18 +30,18 @@ proc valueErrorMsg(got: RawJsonValue, expected: string): string =
       result.add got.raw.string.toOpenArray(0, jsonUnexpectedValueErrorLength - 1)
       result.add "..."
 
-proc valueError*(reader: var HoloReader, format: JsonReadFormat, expected: string) {.inline.} =
+proc valueError*(reader: JsonReaderArg, format: JsonReadFormat, expected: string) {.inline.} =
   let got = peekRawValueSkipSpace(format, reader) # important: this can give parse errors by itself
   reader.error(valueErrorMsg(got, expected))
 
-proc unexpectedError*(reader: var HoloReader, format: JsonReadFormat, expected: string) {.inline.} =
+proc unexpectedError*(reader: JsonReaderArg, format: JsonReadFormat, expected: string) {.inline.} =
   var dummy: char
   if not reader.peek(dummy):
     endError(reader, expected)
   else:
     valueError(reader, format, expected)
 
-proc expectChar*(format: JsonReadFormat, reader: var HoloReader, c: char) {.inline.} =
+proc expectChar*(format: JsonReadFormat, reader: JsonReaderArg, c: char) {.inline.} =
   ## Will consume space before and then the character `c`.
   ## Will raise a value error if `c` is not found,
   ## and a parse error if the end is reached.
@@ -54,7 +54,7 @@ proc expectChar*(format: JsonReadFormat, reader: var HoloReader, c: char) {.inli
   else:
     reader.unsafeNext()
 
-iterator readObjectFields*[K](format: JsonReadFormat, reader: var HoloReader): K =
+iterator readObjectFields*[K](format: JsonReadFormat, reader: JsonReaderArg): K =
   mixin read
   while reader.hasNext():
     skipSpace(reader)
@@ -68,13 +68,13 @@ iterator readObjectFields*[K](format: JsonReadFormat, reader: var HoloReader): K
     if reader.nextMatch(','):
       discard
 
-iterator readObject*[K](format: JsonReadFormat, reader: var HoloReader): K =
+iterator readObject*[K](format: JsonReadFormat, reader: JsonReaderArg): K =
   expectChar(format, reader, '{')
   for name in readObjectFields[K](format, reader):
     yield name
   skipChar(reader, '}')
 
-iterator readArrayItems*(format: JsonReadFormat, reader: var HoloReader, start = 0): int =
+iterator readArrayItems*(format: JsonReadFormat, reader: JsonReaderArg, start = 0): int =
   var i = start
   while reader.hasNext():
     skipSpace(reader)
@@ -91,7 +91,7 @@ iterator readArrayItems*(format: JsonReadFormat, reader: var HoloReader, start =
       reader.parseError("expected comma")
     inc i
 
-iterator readArray*(format: JsonReadFormat, reader: var HoloReader): int =
+iterator readArray*(format: JsonReadFormat, reader: JsonReaderArg): int =
   expectChar(format, reader, '[')
   for i in readArrayItems(format, reader):
     yield i

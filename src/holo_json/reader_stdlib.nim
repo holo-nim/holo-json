@@ -1,8 +1,8 @@
 ## `read` hooks for stdlib types
 
-import ./[common, reader_basic, parser, read_helpers], holo_flow/holo_reader, std/[options, tables, sets, json, parseutils]
+import ./[common, reader_common, reader_basic, parser, read_helpers], std/[options, tables, sets, json, parseutils]
 
-proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode) =
+proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var JsonNode) =
   ## Parses a regular json node.
   skipSpace(reader)
   let kind = peekRawKind(format, reader)
@@ -51,11 +51,11 @@ proc read*(format: JsonReadFormat, reader: var HoloReader, v: var JsonNode) =
         reader.unexpectedError(format, "number value")
       var i = firstPos
       var integer: BiggestInt
-      var chars = parseutils.parseBiggestInt(reader.buffer, integer, i)
+      var chars = parseutils.parseBiggestInt(reader.currentBuffer, integer, i)
       if firstPos + chars <= reader.bufferPos:
         i = firstPos
         var f: float
-        chars = parseutils.parseFloat(reader.buffer, f, i)
+        chars = parseutils.parseFloat(reader.currentBuffer, f, i)
         assert firstPos + chars == reader.bufferPos + 1
         v = newJFloat(f)
       else:
@@ -68,7 +68,7 @@ proc fromJson*(s: string): JsonNode {.inline.} =
   ## Takes json parses it into `JsonNode`s.
   result = fromJson(s, JsonNode)
 
-proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var Option[T]) =
+proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var Option[T]) =
   ## Parse an Option.
   mixin read
   skipSpace(reader)
@@ -103,15 +103,15 @@ template stringTableImpl(format, reader, v, K, V) =
       break
   skipChar(reader, '}')
 
-proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var Table[K, V]) =
+proc read*[K: string | enum, V](format: JsonReadFormat, reader: JsonReaderArg, v: var Table[K, V]) =
   ## Parse an object.
   stringTableImpl(format, reader, v, K, V)
 
-proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var OrderedTable[K, V]) =
+proc read*[K: string | enum, V](format: JsonReadFormat, reader: JsonReaderArg, v: var OrderedTable[K, V]) =
   ## Parse an object.
   stringTableImpl(format, reader, v, K, V)
 
-proc read*[K: string | enum](format: JsonReadFormat, reader: var HoloReader, v: var CountTable[K]) =
+proc read*[K: string | enum](format: JsonReadFormat, reader: JsonReaderArg, v: var CountTable[K]) =
   ## Parse an object.
   stringTableImpl(format, reader, v, K, int)
 
@@ -134,32 +134,32 @@ template anyTableImpl(format, reader, tab, K, V) =
         reader.error("expected table key/value pair, but extra element found")
     tab[k] = v
 
-proc read*[K: not (string | enum), V](format: JsonReadFormat, reader: var HoloReader, tab: var Table[K, V]) =
+proc read*[K: not (string | enum), V](format: JsonReadFormat, reader: JsonReaderArg, tab: var Table[K, V]) =
   ## Parse a normal table.
   anyTableImpl(format, reader, tab, K, V)
 
-proc read*[K: not (string | enum), V](format: JsonReadFormat, reader: var HoloReader, tab: var OrderedTable[K, V]) =
+proc read*[K: not (string | enum), V](format: JsonReadFormat, reader: JsonReaderArg, tab: var OrderedTable[K, V]) =
   ## Parse a normal table.
   anyTableImpl(format, reader, tab, K, V)
 
-proc read*[K: not (string | enum)](format: JsonReadFormat, reader: var HoloReader, tab: var CountTable[K]) =
+proc read*[K: not (string | enum)](format: JsonReadFormat, reader: JsonReaderArg, tab: var CountTable[K]) =
   ## Parse a normal table.
   anyTableImpl(format, reader, tab, K, int)
 
 when false: # should not need anymore with the `ref object` overload disabled
-  proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var TableRef[K, V]) =
+  proc read*[K: string | enum, V](format: JsonReadFormat, reader: JsonReaderArg, v: var TableRef[K, V]) =
     ## Parse an object.
     tableImpl(format, reader, v, K, V)
 
-  proc read*[K: string | enum, V](format: JsonReadFormat, reader: var HoloReader, v: var OrderedTableRef[K, V]) =
+  proc read*[K: string | enum, V](format: JsonReadFormat, reader: JsonReaderArg, v: var OrderedTableRef[K, V]) =
     ## Parse an object.
     tableImpl(format, reader, v, K, V)
 
-  proc read*[K: string | enum](format: JsonReadFormat, reader: var HoloReader, v: var CountTableRef[K]) =
+  proc read*[K: string | enum](format: JsonReadFormat, reader: JsonReaderArg, v: var CountTableRef[K]) =
     ## Parse an object.
     tableImpl(format, reader, v, K, int)
 
-proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var HashSet[T]) =
+proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var HashSet[T]) =
   ## Parses `HashSet`.
   mixin read
   for i in readArray(format, reader):
@@ -167,7 +167,7 @@ proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var HashSet[T])
     read(format, reader, e)
     v.incl(e)
 
-proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var OrderedSet[T]) =
+proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var OrderedSet[T]) =
   ## Parses `OrderedSet`.
   mixin read
   for i in readArray(format, reader):
@@ -175,7 +175,7 @@ proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var OrderedSet[
     read(format, reader, e)
     v.incl(e)
 
-proc read*[T](format: JsonReadFormat, reader: var HoloReader, v: var set[T]) =
+proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var set[T]) =
   ## Parses the built-in `set` type.
   # separate overload for bitflags or something
   mixin read
