@@ -418,7 +418,7 @@ proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
     # scan for field names belonging to a variant branch, or the variant field itself
     skipSpace(reader)
     reader.lockBuffer()
-    let (savedPos, savedLine, savedCol) = (reader.bufferPos, reader.line, reader.column)
+    let savedState = reader.state
     try:
       while reader.hasNext():
         var key: string
@@ -455,7 +455,7 @@ proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
           initObj(v)
           break
     finally:
-      (reader.bufferPos, reader.line, reader.column) = (savedPos, savedLine, savedCol)
+      reader.state = savedState
       reader.unlockBuffer()
   parseObjectInner(format, reader, v)
   skipChar(reader, '}')
