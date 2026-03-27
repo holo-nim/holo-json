@@ -141,7 +141,7 @@ doAssert snakeCase("color_rule") == "color_rule"
 doAssert snakeCase("httpGet") == "http_get"
 doAssert snakeCase("restAPI") == "rest_api"
 
-import holo_json/reader_common
+import holo_json/read_common
 
 type
   Entry5 = object

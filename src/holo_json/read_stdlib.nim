@@ -1,6 +1,6 @@
 ## `read` hooks for stdlib types
 
-import ./[common, reader_common, reader_basic, parser, read_helpers], std/[options, tables, sets, json, parseutils]
+import ./[common, read_common, read_basic, parser, read_helpers], std/[options, tables, sets, json, parseutils]
 
 proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var JsonNode) =
   ## Parses a regular json node.

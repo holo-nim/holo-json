@@ -1,6 +1,6 @@
 ## implements dumping behavior for basic types 
 
-import ./[common, dumper_common], std/[typetraits, unicode]
+import ./[common, dump_common], std/[typetraits, unicode]
 import std/math # for classify
 
 export JsonWriter, JsonWriterArg, initJsonWriter, startWrite, finishWrite, write

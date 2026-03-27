@@ -1,6 +1,6 @@
 ## `dump` hooks for stdlib types
 
-import ./[common, dumper_common, dumper_basic, dump_helpers], std/[options, sets, tables, json]
+import ./[common, dump_common, dump_basic, dump_helpers], std/[options, sets, tables, json]
 
 proc dump*(format: JsonDumpFormat, writer: JsonWriterArg, v: JsonNode) =
   ## Dumps a regular json node.

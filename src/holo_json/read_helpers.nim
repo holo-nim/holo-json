@@ -1,4 +1,4 @@
-import ./[common, reader_common, parser], std/strbasics
+import ./[common, read_common, parser], std/strbasics
 export skipSpace, JsonValueKind, RawJsonValue, peekRawKind, peekRawKindSkipSpace, skipValue, readRawValue, peekRawValueSkipSpace
 export JsonReader, initJsonReader, startRead
 

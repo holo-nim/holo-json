@@ -1,4 +1,4 @@
-import ./[common, reader_common], std/[strutils, unicode]
+import ./[common, read_common], std/[strutils, unicode]
 
 proc parseError*(reader: JsonReaderArg, msg: string) {.inline.} =
   ## Shortcut to raise an exception.
