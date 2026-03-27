@@ -109,7 +109,7 @@ Not compatible with jsony's parsing/conversion behavior.
 
   One potential caveat is that this could make compile times worse but the macro code for this is not particularly complex. The `fields` magic can't be much more efficient anyway.
 
-* Using `holo-map` allows to generalize enough that this library is easier to copy for another data format,
+* Using the holo-map library allows to generalize enough that this library is easier to copy for another data format,
   and switching between other data formats and this library is easy as well.
   Even the reader/writer types can be abstracted over thanks to the `format` argument.
 
@@ -117,7 +117,7 @@ Not compatible with jsony's parsing/conversion behavior.
 
 * The runtime object hooks from jsony (adapted `startObjectRead`/`finishObjectRead` as well as compatibility-only `renameHook` and `skipHook`) no longer work when defined for ref objects. Instead they have to be defined on the dereferenced object type, which can be done easily like so:
 
-  ```
+  ```nim
   type Foo = ref object
   template derefType[T](_: typedesc[ref T]): typedesc[T] = T
   proc startObjectRead(format: JsonReadFormat, reader: JsonReaderArg, foo: var derefType(Foo)) = ...
@@ -133,14 +133,15 @@ Not compatible with jsony's parsing/conversion behavior.
 
 ### Data handling
 
-* Instead of working on bare strings, "shrinking buffers" from [holo-flow](https://github.com/holo-nim/holo-flow) are used.
+* Instead of working on bare strings, reader and writer types from [holo-flow](https://github.com/holo-nim/holo-flow) are used. These keep the lightness of strings and allow loading from/flushing to streams as necessary.
 
 * The existence of the format and reader/writer objects allows for line/column handling and options for different behavior, a potential option is for pretty output but is not implemented yet.
 
+* Parsing errors and value errors are properly separated. When a value is encountered that is unexpected by the current type, the full raw JSON value will be parsed (skipped) before giving a value error. If that single value cannot be parsed, a parsing error is given. This does not mean that types are not allowed to override the JSON grammar, but error reporting prioritizes valid JSON.
+
 ### Data representation
 
-* Object field names convert to snake case by default instead of using the original name, and only accept this snake case version rather than either snake case or the original name. Outputting snake case by default is to make the most common real world use cases more convenient, not reading the original name is to not unnecessarily complicate the generated case statements. The original jsony behavior can be brought back with `-d:jsonyFieldCompatibility`, and this behavior is represented by constants in `common.nim`.
-  * Not the case for enums though.
+#### New
 
 * Object variants support detecting from inner fields of variant branches without needing the variant field as in original jsony.
 
@@ -165,6 +166,11 @@ Not compatible with jsony's parsing/conversion behavior.
 * Enums allow representation as integers instead of strings via a runtime option. Although this can be done with hooks it's nicer to be able to change what's opt in and what's opt out.
 
 * `\x` is optionally supported for nicer byte strings (I guess if base64 isn't available).
+
+#### Breaking
+
+* Object field names convert to snake case by default instead of using the original name, and only accept this snake case version rather than either snake case or the original name. Outputting snake case by default is to make the most common real world use cases more convenient, not reading the original name is to not unnecessarily complicate the generated case statements. The original jsony behavior can be brought back with `-d:jsonyFieldCompatibility`, and this behavior is represented by constants in `common.nim`.
+  * Not the case for enums though.
 
 * Some weird `null` handling is removed: Non-ref objects and strings accepted `null` and interpreted it to mean "empty", as in reading nothing. Now it is allowed only where an explicit `null` value exists (like `nil` or `None`). The old behavior might become a config option but it is hard to justify for specifically objects and strings.
 
