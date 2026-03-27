@@ -1,5 +1,7 @@
 import ./common, holo_flow/holo_reader, std/[strutils, unicode]
 
+type ReaderType* = var HoloReader
+
 proc parseError*(reader: var HoloReader, msg: string) {.inline.} =
   ## Shortcut to raise an exception.
   raise newException(JsonParseError, "(" & $reader.line & ", " & $reader.column & ") " & msg)
