@@ -3,7 +3,7 @@
 import ./[common, dumper_common], std/[typetraits, unicode]
 import std/math # for classify
 
-export JsonWriter, initJsonWriter, startWrite, finishWrite, write
+export JsonWriter, JsonWriterArg, initJsonWriter, startWrite, finishWrite, write
 
 proc dump*(format: JsonDumpFormat, writer: JsonWriterArg, v: string)
 type t[T] = tuple[a: string, b: T]

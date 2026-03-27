@@ -3,6 +3,8 @@
 import ./[common, reader_common, parser, read_helpers], holo_map/[caseutils, variants]
 import std/[unicode, parseutils, typetraits, importutils, strbasics]
 
+export JsonReader, JsonReaderArg, initJsonReader, startRead
+
 proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T])
 proc read*[T: enum](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline.}
 proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T)
