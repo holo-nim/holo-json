@@ -179,7 +179,18 @@ proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var float) =
       reader.unexpectedError(format, "float")
     var i = firstPos
     var f: float
-    let chars = parseutils.parseFloat(reader.currentBuffer, f, i)
+    template doParseFloat(s: string): untyped =
+      parseutils.parseFloat(s, f, i)
+    template doParseFloat(s: cstring | string, len: int): untyped =
+      parseutils.parseFloat(s.toOpenArray(i, len - 1), f)
+    let chars =
+      when reader is ViewReader:
+        if reader.cannotViewBuffer:
+          doParseFloat(reader.currentBuffer)
+        else:
+          doParseFloat(reader.bufferView, reader.bufferViewLen)
+      else:
+        doParseFloat(reader.currentBuffer)
     assert firstPos + chars == reader.bufferPos + 1
     v = f
   finally:

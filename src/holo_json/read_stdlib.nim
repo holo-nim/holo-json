@@ -51,11 +51,33 @@ proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var JsonNode) =
         reader.unexpectedError(format, "number value")
       var i = firstPos
       var integer: BiggestInt
-      var chars = parseutils.parseBiggestInt(reader.currentBuffer, integer, i)
+      template doParseInt(s: string): untyped =
+        parseutils.parseBiggestInt(s, integer, i)
+      template doParseInt(s: cstring | string, len: int): untyped =
+        parseutils.parseBiggestInt(s.toOpenArray(i, len - 1), integer)
+      var chars =
+        when reader is ViewReader:
+          if reader.cannotViewBuffer:
+            doParseInt(reader.currentBuffer)
+          else:
+            doParseInt(reader.bufferView, reader.bufferViewLen)
+        else:
+          doParseInt(reader.currentBuffer)
       if firstPos + chars <= reader.bufferPos:
         i = firstPos
         var f: float
-        chars = parseutils.parseFloat(reader.currentBuffer, f, i)
+        template doParseFloat(s: string): untyped =
+          parseutils.parseFloat(s, f, i)
+        template doParseFloat(s: cstring | string, len: int): untyped =
+          parseutils.parseFloat(s.toOpenArray(i, len - 1), f)
+        chars =
+          when reader is ViewReader:
+            if reader.cannotViewBuffer:
+              doParseFloat(reader.currentBuffer)
+            else:
+              doParseFloat(reader.bufferView, reader.bufferViewLen)
+          else:
+            doParseFloat(reader.currentBuffer)
         assert firstPos + chars == reader.bufferPos + 1
         v = newJFloat(f)
       else:

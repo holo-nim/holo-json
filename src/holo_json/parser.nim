@@ -243,11 +243,23 @@ proc parseString*(format: JsonReadFormat, reader: JsonReaderArg, quoteSkipped = 
             for p in 0 ..< numBytes:
               result[vLen + p] = reader.currentBuffer[copyStart + p]
           else:
-            when not holoJsonStringCopyMem or defined(js) or defined(nimscript):
+            when defined(js) or defined(nimscript):
               for p in 0 ..< numBytes:
                 result[vLen + p] = reader.currentBuffer[copyStart + p]
             else:
-              copyMem(result[vLen].addr, reader.currentBuffer[copyStart].unsafeAddr, numBytes)
+              let realBuffer =
+                when reader is ViewReader:
+                  if reader.cannotViewBuffer:
+                    cstring(reader.currentBuffer)
+                  else:
+                    reader.bufferView
+                else:
+                  cstring(reader.currentBuffer)
+              when not holoJsonStringCopyMem:
+                for p in 0 ..< numBytes:
+                  result[vLen + p] = realBuffer[copyStart + p]
+              else:
+                copyMem(result[vLen].addr, realBuffer[copyStart].unsafeAddr, numBytes)
         reader.unlockBuffer()
         inCopy = false
 
