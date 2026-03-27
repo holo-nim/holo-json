@@ -371,7 +371,7 @@ proc readRawValue*(format: JsonReadFormat, reader: JsonReaderArg): RawJsonValue 
 
 proc peekRawValueSkipSpace*(format: JsonReadFormat, reader: JsonReaderArg): RawJsonValue =
   ## reads a full raw json value, relatively inefficient and mostly meant for errors
-  let savedState = reader.state
+  var savedState = reader.state # XXX using `let` makes VM not copy here
   reader.lockBuffer()
   try:
     skipSpace(reader)

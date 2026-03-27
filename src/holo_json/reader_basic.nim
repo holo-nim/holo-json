@@ -420,7 +420,7 @@ proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
     # scan for field names belonging to a variant branch, or the variant field itself
     skipSpace(reader)
     reader.lockBuffer()
-    let savedState = reader.state
+    var savedState = reader.state # XXX using `let` makes VM not copy here
     try:
       while reader.hasNext():
         var key: string
