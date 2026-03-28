@@ -23,6 +23,8 @@ when impl == JsonLoadReader:
       ## reader implementation used in the default `read` hook implementations
     JsonReaderArg* = var JsonReader
       ## reader implementation used in the default `read` hook implementation signatures
+      ## 
+      ## implementing type has to match API in https://holo-nim.github.io/holo-flow/docs/reader_api
 
   proc initJsonReader*(doLineColumn = holoJsonLineColumn): JsonReader {.inline.} =
     result = initLoadReader(doLineColumn = doLineColumn)

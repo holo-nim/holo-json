@@ -19,6 +19,8 @@ when impl == JsonFlushWriter:
       ## writer implementation used in the default `dump` hook implementations
     JsonWriterArg* = var JsonWriter
       ## writer implementation used in the default `dump` hook implementation signatures
+      ## 
+      ## implementing type has to match API in https://holo-nim.github.io/holo-flow/docs/writer_api
 
   proc initJsonWriter*(): JsonWriter {.inline.} =
     result = initFlushWriter()
