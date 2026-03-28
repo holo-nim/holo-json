@@ -5,7 +5,7 @@ import std/[unicode, parseutils, typetraits, importutils, strbasics]
 
 export JsonReader, JsonReaderArg, initJsonReader, startRead
 
-proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T])
+proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T]) {.inline.}
 proc read*[T: enum](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline.}
 proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T)
 proc read*[T: tuple](format: JsonReadFormat, reader: JsonReaderArg, v: var T)
@@ -229,13 +229,18 @@ proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var char) {.inline.
     reader.error("String can't fit into a char.")
   v = str[0]
 
-proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T]) =
-  ## Parse seq.
+proc readSeq*[T](format: JsonReadFormat, reader: JsonReaderArg): seq[T] =
+  ## reads a JSON array as a seq of T
   mixin read
+  result = @[]
   for i in readArray(format, reader):
     var element: T
     read(format, reader, element)
-    v.add element
+    result.add element
+
+proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T]) {.inline.} =
+  ## Parse seq.
+  v = readSeq[T](format, reader)
 
 proc read*[T: array](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
   mixin read
@@ -302,7 +307,7 @@ template implNormalizer[T: not HasNormalizer](_: typedesc[T]): untyped =
   else:
     const normalizerImpl {.inject.} = nil
 
-proc parseObjectInner[T](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline.} =
+proc parseObjectInner[T](format: JsonReadFormat, reader: JsonReaderArg, obj: var T) {.inline.} =
   mixin read
   privateAccess(T) # important
   while reader.hasNext():
@@ -313,26 +318,20 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: JsonReaderArg, v: var T
     read(format, reader, key)
     skipChar(reader, ':')
     {.cast(uncheckedAssign).}:
-      when jsonyHookCompatibility and compiles(renameHook(v, key)):
-        renameHook(v, key)
+      when jsonyHookCompatibility and compiles(renameHook(obj, key)):
+        renameHook(obj, key)
         block all:
-          for k, v in fieldPairs(when v is ref: v[] else: v):
+          for k, v in fieldPairs(when obj is ref: obj[] else: obj):
             if k == key or static(toSnakeCase(k)) == key:
-              var v2: type(v)
-              read(format, reader, v2)
-              v = v2
+              read(format, reader, v)
               break all
           discard skipValue(format, reader)
       else:
         template onFieldInput(f) =
-          # XXX compiler thinks this is immutable:
-          #read(reader, f)
-          var v2: typeof(f)
-          read(format, reader, v2)
-          f = v2
+          read(format, reader, f)
         const mappings = getActualFieldMappings(T, HoloJson)
         implNormalizer(T)
-        mapFieldInput(v, key, mappings, normalizerImpl, jsonDefaultInputNames, onFieldInput):
+        mapFieldInput(obj, key, mappings, normalizerImpl, jsonDefaultInputNames, onFieldInput):
           discard skipValue(format, reader)
     skipSpace(reader)
     if reader.nextMatch(','):
@@ -340,7 +339,7 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: JsonReaderArg, v: var T
     else:
       break
   mixin finishObjectRead
-  finishObjectRead(format, reader, v)
+  finishObjectRead(format, reader, obj)
 
 proc read*[T: tuple](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
   mixin read
