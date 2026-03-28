@@ -16,6 +16,10 @@ const holoJsonObjectStyleInsensitivity* {.booldefine.} = false
 const holoJsonEnumStyleInsensitivity* {.booldefine.} = false
   ## defines a normalizer hook for enum fields to implement style insensitivity
 
+const holoJsonCommentSupport* {.booldefine.} = false
+  ## adds support for comments where whitespace is allowed, not tested well and can hurt performance
+  ## supports both // and /* */ comments
+
 type
   JsonReadFormat* = object
     handleUtf16*: bool = true
@@ -24,7 +28,6 @@ type
       ## jsony errors if binary data in strings is not utf8, this is now opt in
     rawJsNanInf*: bool
       ## parses raw NaN/Infinity/-Infinity as in js and json5
-    # XXX comments?
   EnumOutput* = enum
     EnumName, EnumOrd
   InvalidUtf8Output* = enum
