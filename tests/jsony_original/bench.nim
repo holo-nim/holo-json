@@ -5,11 +5,16 @@ when defined(packedjson):
   import packedjson, packedjson/deserialiser
 else:
   import json
-const status = not defined(gcArc)
+const status = not defined(gcArc) and not defined(js)
 when status:
   import serialization
   import json_serialization except Json, toJson
 #from deser_json import parse, to
+
+when defined(js):
+  template keep(x) =
+    let a = x
+    {.emit: ["this.keepValue = ", a, ";"].}
 
 type Node = ref object
   active: bool
@@ -85,14 +90,16 @@ when status:
     keep json_serialization.Json.encode(tree)
   doAssert json_serialization.Json.encode(tree) == treeStr
 
-timeIt "planetis-m/eminim", 100:
-  var s = newStringStream()
-  s.storeJson(tree)
-  s.setPosition(0)
-  keep s.data
+when not defined(js):
+  timeIt "planetis-m/eminim", 100:
+    var s = newStringStream()
+    s.storeJson(tree)
+    s.setPosition(0)
+    keep s.data
 
-timeIt "disruptek/jason", 100:
-  keep tree.jason.string
+when not defined(js):
+  timeIt "disruptek/jason", 100:
+    keep tree.jason.string
 
 when defined(packedjson):
   timeIt "araq/packedjson", 100:

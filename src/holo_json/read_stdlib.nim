@@ -51,11 +51,19 @@ proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var JsonNode) =
         reader.unexpectedError(format, "number value")
       var i = firstPos
       var integer: BiggestInt
-      var chars = parseutils.parseBiggestInt(reader.currentBuffer, integer, i)
+      var chars = 
+        when reader.currentBuffer is string:
+          parseutils.parseBiggestInt(reader.currentBuffer, integer, i)
+        else:
+          parseutils.parseBiggestInt(reader.currentBuffer.toOpenArray(i, reader.currentBuffer.len - 1), integer)
       if firstPos + chars <= reader.bufferPos:
         i = firstPos
         var f: float
-        chars = parseutils.parseFloat(reader.currentBuffer, f, i)
+        chars =
+          when reader.currentBuffer is string:
+            parseutils.parseFloat(reader.currentBuffer, f, i)
+          else:
+            parseutils.parseFloat(reader.currentBuffer.toOpenArray(i, reader.currentBuffer.len - 1), f)
         assert firstPos + chars == reader.bufferPos + 1
         v = newJFloat(f)
       else:
