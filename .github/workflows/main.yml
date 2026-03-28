@@ -93,7 +93,9 @@ jobs:
         run: nimble install -y
 
       - name: install bench dependencies
-        run: nimble install benchy jsony eminim json_serialization jason
+        run: |
+          nimble install benchy jsony eminim json_serialization
+          nimble install --passNim:"-d:release" https://github.com/disruptek/jason
 
       - name: run benchmarks
         run: nim r -d:runBench tasks/run_tests.nim
