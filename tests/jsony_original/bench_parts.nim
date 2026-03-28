@@ -78,7 +78,8 @@ block:
     id: int
     kids: seq[Node]
   var seqObj: seq[Node]
-  for i in 0 ..< 100000:
+  let count = when defined(js): 1000 else: 100000
+  for i in 0 ..< count:
     seqObj.add(Node())
   var jsonStr = seqObj.toJson()
   timeIt "treeform/jsony", 100:

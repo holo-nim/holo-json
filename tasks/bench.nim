@@ -27,6 +27,8 @@ proc bench(kind: BenchKind) =
     for opt in refcCombos.mitems: opt.add " --mm:refc"
     var arcCombos = @[combos[0]]
     for opt in arcCombos.mitems: opt.add " --mm:arc"
+    var memCombos = @[combos[0], combos[1]]
+    for opt in memCombos.mitems: opt.add " -d:holoReaderPeekStrCopyMem -d:holoReaderMatchStrEqualMem"
     combos.add refcCombos
     combos.add arcCombos
   of RunJs: discard

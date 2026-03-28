@@ -1,5 +1,6 @@
 const holoJsonLineColumn* {.booldefine.} = true
-  ## enables/disables line column tracking by default, has very little impact on performance
+  ## enables/disables line column tracking by default at runtime if implementation allows it,
+  ## default implementation does not
 
 const holoJsonBatchStringAdd* {.booldefine.} = not defined(js)
   ## adds/copies a range of string characters to read/dump output all at once whenever possible,
