@@ -62,7 +62,7 @@ when status:
   timeIt "status-im/nim-json-serialization", 100:
     keep json_serialization.Json.decode(treeStr, Node)
 
-when not defined(js):
+when false:
   timeIt "planetis-m/eminim", 100:
     keep newStringStream(treeStr).jsonTo(Node)
 

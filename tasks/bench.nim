@@ -23,9 +23,9 @@ proc bench(kind: BenchKind) =
   ]
   case kind
   of Run:
-    var refcCombos = combos
+    var refcCombos = @[combos[0]]
     for opt in refcCombos.mitems: opt.add " --mm:refc"
-    var arcCombos = combos
+    var arcCombos = @[combos[0]]
     for opt in arcCombos.mitems: opt.add " --mm:arc"
     combos.add refcCombos
     combos.add arcCombos
