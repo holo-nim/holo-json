@@ -2,13 +2,60 @@ import ./[common, read_common], std/[strutils, unicode]
 
 proc parseError*(reader: JsonReaderArg, msg: string) {.inline.} =
   ## Shortcut to raise an exception.
-  raise newException(JsonParseError, "(" & $reader.state.line & ", " & $reader.state.column & ") " & msg)
+  when supportsLineColumn(reader):
+    let msg = "(" & $reader.state.line & ", " & $reader.state.column & ") " & msg
+  raise newException(JsonParseError, msg)
+
+proc skipLineComment*(reader: JsonReaderArg) =
+  for c in reader.chars():
+    if c in Newlines: break
+
+proc skipBlockComment*(reader: JsonReaderArg) =
+  var nest = 0
+  var c: char
+  while peek(reader, c):
+    if c == '*':
+      unsafeNext(reader)
+      var c2: char
+      if peek(reader, c2) and c2 == '/':
+        if nest == 0:
+          return
+        else:
+          unsafeNext(reader)
+          dec nest
+    elif c == '/':
+      unsafeNext(reader)
+      var c2: char
+      if peek(reader, c2) and c2 == '*':
+        unsafeNext(reader)
+        inc nest
+    else:
+      unsafeNext(reader)
+  reader.parseError("expected end of block comment")
 
 proc skipSpace*(reader: JsonReaderArg) {.inline.} =
   ## Will consume whitespace.
-  for c in reader.peekNext():
-    if c notin Whitespace:
-      break
+  ## and comments if `-d:holoJsonCommentSupport` is enabled
+  for c in reader.chars():
+    when holoJsonCommentSupport:
+      case c
+      of Whitespace: discard
+      of '/':
+        var c2: char = '\0'
+        if peek(reader, c2, offset = 1) and c2 == '/':
+          unsafeNext(reader)
+          unsafeNext(reader)
+          skipLineComment(reader)
+        elif c2 == '*':
+          unsafeNext(reader)
+          unsafeNext(reader)
+          skipBlockComment(reader)
+        else: break
+      else:
+        break
+    else:
+      if c notin Whitespace:
+        break
 
 type
   JsonValueKind* = enum
@@ -93,7 +140,7 @@ proc skipNumber*(format: JsonReadFormat, reader: JsonReaderArg): int =
       discard
   block integerPart:
     var hasDigit = false
-    for c in reader.peekNext():
+    for c in reader.chars():
       case c
       of '0'..'9':
         hasDigit = true
@@ -103,7 +150,7 @@ proc skipNumber*(format: JsonReadFormat, reader: JsonReaderArg): int =
   block decimalPoint:
     if reader.peekMatch('.') and reader.peekMatch({'0'..'9'}, offset = 1):
       reader.unsafeNext()
-      for c in reader.peekNext():
+      for c in reader.chars():
         case c
         of '0'..'9': discard
         else: break
@@ -121,7 +168,7 @@ proc skipNumber*(format: JsonReadFormat, reader: JsonReaderArg): int =
         if hasSign:
           let secondSkip = reader.next(c)
           assert secondSkip
-        for c in reader.peekNext():
+        for c in reader.chars():
           case c
           of '0'..'9': discard
           else: break

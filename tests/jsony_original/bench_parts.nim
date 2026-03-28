@@ -5,10 +5,15 @@ when defined(packedjson):
   import packedjson, packedjson/deserialiser
 else:
   import json
-const status = not defined(gcArc)
+const status = not defined(gcArc) and not defined(js)
 when status:
   import serialization
   import json_serialization except Json, toJson
+
+when defined(js):
+  template keep(x) =
+    let a = x
+    {.emit: ["this.keepValue = ", a, ";"].}
 
 block:
   echo "deserialize string:"
@@ -73,7 +78,8 @@ block:
     id: int
     kids: seq[Node]
   var seqObj: seq[Node]
-  for i in 0 ..< 100000:
+  let count = when defined(js): 1000 else: 100000
+  for i in 0 ..< count:
     seqObj.add(Node())
   var jsonStr = seqObj.toJson()
   timeIt "treeform/jsony", 100:

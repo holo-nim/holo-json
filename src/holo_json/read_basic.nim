@@ -57,7 +57,7 @@ proc readUnsignedInt*[T](format: JsonReadFormat, reader: JsonReaderArg, _: typed
   #when nimvm: v = type(v)(parseBiggestUInt(parseSymbol(reader)))
   result = 0
   var gotChar = false
-  for c in reader.peekNext():
+  for c in reader.chars():
     case c
     of '0'..'9':
       gotChar = true
@@ -179,7 +179,11 @@ proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var float) =
       reader.unexpectedError(format, "float")
     var i = firstPos
     var f: float
-    let chars = parseutils.parseFloat(reader.currentBuffer, f, i)
+    let chars =
+      when reader.currentBuffer is string:
+        parseutils.parseFloat(reader.currentBuffer, f, i)
+      else:
+        parseutils.parseFloat(reader.currentBuffer.toOpenArray(i, reader.currentBuffer.len - 1), f)
     assert firstPos + chars == reader.bufferPos + 1
     v = f
   finally:
