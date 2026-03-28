@@ -5,10 +5,15 @@ when defined(packedjson):
   import packedjson, packedjson/deserialiser
 else:
   import json
-const status = not defined(gcArc)
+const status = not defined(gcArc) and not defined(js)
 when status:
   import serialization
   import json_serialization except Json, toJson
+
+when defined(js):
+  template keep(x) =
+    let a = x
+    {.emit: ["this.keepValue = ", a, ";"].}
 
 block:
   echo "deserialize string:"
