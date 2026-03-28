@@ -23,7 +23,7 @@ jobs:
         run: nimble install -y
 
       - name: run tests
-        run: nimble tests
+        run: nim r tasks/run_tests.nim
 
   test-devel:
     runs-on: ubuntu-latest
@@ -78,3 +78,25 @@ jobs:
           force: true
           directory: ./pages/
         if: github.event_name != 'pull_request'
+
+  bench:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: jiro4989/setup-nim-action@v2
+
+      - name: install nimbleutils
+        run: nimble install -y https://github.com/metagn/nimbleutils@#HEAD
+      
+      - name: install dependencies
+        run: nimble install -y
+
+      - name: install bench dependencies
+        run: nimble install benchy jsony eminim json_serialization jason
+
+      - name: run benchmarks
+        run: nim r -d:runBench tasks/run_tests.nim
+
+      - name: run JS benchmarks
+        run: nim r -d:runBench -d:runBenchJs tasks/run_tests.nim
