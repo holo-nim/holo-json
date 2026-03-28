@@ -2,7 +2,9 @@ import ./[common, read_common], std/[strutils, unicode]
 
 proc parseError*(reader: JsonReaderArg, msg: string) {.inline.} =
   ## Shortcut to raise an exception.
-  raise newException(JsonParseError, "(" & $reader.state.line & ", " & $reader.state.column & ") " & msg)
+  when supportsLineColumn(reader):
+    let msg = "(" & $reader.state.line & ", " & $reader.state.column & ") " & msg
+  raise newException(JsonParseError, msg)
 
 proc skipSpace*(reader: JsonReaderArg) {.inline.} =
   ## Will consume whitespace.

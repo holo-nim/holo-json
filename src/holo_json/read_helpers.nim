@@ -4,7 +4,9 @@ export JsonReader, initJsonReader, startRead
 
 proc error*(reader: JsonReaderArg, msg: string) {.inline.} =
   ## Shortcut to raise an exception.
-  raise newException(JsonValueError, "(" & $reader.state.line & ", " & $reader.state.column & ") " & msg)
+  when supportsLineColumn(reader):
+    let msg = "(" & $reader.state.line & ", " & $reader.state.column & ") " & msg
+  raise newException(JsonValueError, msg)
 
 proc endError*(reader: JsonReaderArg, expected: string) {.inline.} =
   reader.parseError("expected " & expected & " but end reached")
