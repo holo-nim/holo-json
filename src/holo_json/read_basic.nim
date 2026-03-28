@@ -5,7 +5,7 @@ import std/[unicode, parseutils, typetraits, importutils, strbasics]
 
 export JsonReader, JsonReaderArg, initJsonReader, startRead
 
-proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T])
+proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T]) {.inline.}
 proc read*[T: enum](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline.}
 proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T)
 proc read*[T: tuple](format: JsonReadFormat, reader: JsonReaderArg, v: var T)
@@ -229,13 +229,18 @@ proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var char) {.inline.
     reader.error("String can't fit into a char.")
   v = str[0]
 
-proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T]) =
-  ## Parse seq.
+proc readSeq*[T](format: JsonReadFormat, reader: JsonReaderArg): seq[T] =
+  ## reads a JSON array as a seq of T
   mixin read
+  result = @[]
   for i in readArray(format, reader):
     var element: T
     read(format, reader, element)
-    v.add element
+    result.add element
+
+proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T]) {.inline.} =
+  ## Parse seq.
+  v = readSeq[T](format, reader)
 
 proc read*[T: array](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
   mixin read
