@@ -57,7 +57,7 @@ proc readUnsignedInt*[T](format: JsonReadFormat, reader: JsonReaderArg, _: typed
   #when nimvm: v = type(v)(parseBiggestUInt(parseSymbol(reader)))
   result = 0
   var gotChar = false
-  for c in reader.peekNext():
+  for c in reader.chars():
     case c
     of '0'..'9':
       gotChar = true

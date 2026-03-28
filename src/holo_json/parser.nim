@@ -8,7 +8,7 @@ proc parseError*(reader: JsonReaderArg, msg: string) {.inline.} =
 
 proc skipSpace*(reader: JsonReaderArg) {.inline.} =
   ## Will consume whitespace.
-  for c in reader.peekNext():
+  for c in reader.chars():
     if c notin Whitespace:
       break
 
@@ -95,7 +95,7 @@ proc skipNumber*(format: JsonReadFormat, reader: JsonReaderArg): int =
       discard
   block integerPart:
     var hasDigit = false
-    for c in reader.peekNext():
+    for c in reader.chars():
       case c
       of '0'..'9':
         hasDigit = true
@@ -105,7 +105,7 @@ proc skipNumber*(format: JsonReadFormat, reader: JsonReaderArg): int =
   block decimalPoint:
     if reader.peekMatch('.') and reader.peekMatch({'0'..'9'}, offset = 1):
       reader.unsafeNext()
-      for c in reader.peekNext():
+      for c in reader.chars():
         case c
         of '0'..'9': discard
         else: break
@@ -123,7 +123,7 @@ proc skipNumber*(format: JsonReadFormat, reader: JsonReaderArg): int =
         if hasSign:
           let secondSkip = reader.next(c)
           assert secondSkip
-        for c in reader.peekNext():
+        for c in reader.chars():
           case c
           of '0'..'9': discard
           else: break
