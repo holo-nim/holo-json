@@ -98,7 +98,31 @@ jobs:
           nimble install --passNim:"-d:release" https://github.com/disruptek/jason
 
       - name: run benchmarks
-        run: nim r -d:runBench tasks/run_tests.nim
+        run: nim r -d:runBench tasks/bench.nim
 
       - name: run JS benchmarks
-        run: nim r -d:runBench -d:runBenchJs tasks/run_tests.nim
+        run: nim r -d:runBench -d:runBenchJs tasks/bench.nim
+
+  compile-bench-devel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: jiro4989/setup-nim-action@v2
+
+      - name: install nimbleutils
+        run: nimble install -y https://github.com/metagn/nimbleutils@#HEAD
+      
+      - name: install dependencies
+        run: nimble install -y
+
+      - name: install bench dependencies
+        run: |
+          nimble install benchy jsony eminim json_serialization
+          nimble install --passNim:"-d:release" https://github.com/disruptek/jason
+
+      - name: run benchmarks
+        run: nim r -d:runBench tasks/bench.nim
+
+      - name: run JS benchmarks
+        run: nim r -d:runBench -d:runBenchJs tasks/bench.nim
