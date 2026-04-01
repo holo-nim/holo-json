@@ -71,7 +71,7 @@ type
   JsonParseError* = object of JsonError
     ## error for invalid json grammar according to the given format
 
-import holo_map/[groups, fields]
+import cosm/[groups, fields]
 export groups, fields
 
 const HoloJson* = MappingGroup(id: "holo-json", parents: @[Json])

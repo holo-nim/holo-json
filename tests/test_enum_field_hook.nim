@@ -1,4 +1,4 @@
-import holo_json, holo_map/fields
+import holo_json, cosm/fields
 
 # default:
 

@@ -72,7 +72,7 @@ Not compatible with jsony's parsing/conversion behavior.
     s.add '}'
   ```
 
-* Instead of `renameHook` and `skipHook` for objects, options for fields can be given in the form of a pragma, using [holo-map](https://github.com/holo-nim/holo-map). A hook can be used for the full field mapping as well, but it has to work at compile time. More info on the possible field options are in the [documentation](https://holo-nim.github.io/holo-map/docs/fields.html#FieldMapping).
+* Instead of `renameHook` and `skipHook` for objects, options for fields can be given in the form of a pragma, using [cosm](https://github.com/holo-nim/cosm). A hook can be used for the full field mapping as well, but it has to work at compile time. More info on the possible field options are in the [documentation](https://holo-nim.github.io/cosm/docs/fields.html#FieldMapping).
 
   ```nim
   # previous:
@@ -90,7 +90,7 @@ Not compatible with jsony's parsing/conversion behavior.
   type Node = ref object
     kind {.mapping: "type".}: string
   # or:
-  import holo_map/fields
+  import cosm/fields
   type Node = ref object
     kind: string
   proc getFieldMappings(T: type Node, group: static MappingGroup): FieldMappingPairs =
@@ -109,7 +109,7 @@ Not compatible with jsony's parsing/conversion behavior.
 
   One potential caveat is that this could make compile times worse but the macro code for this is not particularly complex. The `fields` magic can't be much more efficient anyway.
 
-* Using the holo-map library allows to generalize enough that this library is easier to copy for another data format,
+* Using the cosm library allows to generalize enough that this library is easier to copy for another data format,
   and switching between other data formats and this library is easy as well.
   Even the reader/writer types can be abstracted over thanks to the `format` argument.
 
