@@ -11,7 +11,7 @@ else:
   const impl = parseEnum[JsonWriterImplementation](holoJsonWriterImpl)
 
 when impl == JsonFlushWriter:
-  import holo_flow/flush_writer
+  import flue/flush_writer
   export flush_writer
 
   type
@@ -20,7 +20,7 @@ when impl == JsonFlushWriter:
     JsonWriterArg* = var JsonWriter
       ## writer implementation used in the default `dump` hook implementation signatures
       ## 
-      ## implementing type has to match API in https://holo-nim.github.io/holo-flow/docs/writer_api
+      ## implementing type has to match API in https://holo-nim.github.io/flue/docs/writer_api
 
   proc initJsonWriter*(): JsonWriter {.inline.} =
     result = initFlushWriter()

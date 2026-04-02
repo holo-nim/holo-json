@@ -6,7 +6,7 @@ license     = "MIT"
 srcDir = "src"
 
 requires "nim >= 2.0.0"
-requires "https://github.com/holo-nim/holo-flow#HEAD"
+requires "https://github.com/holo-nim/flue#HEAD"
 requires "https://github.com/holo-nim/cosm#HEAD"
 
 task docs, "build docs for all modules":

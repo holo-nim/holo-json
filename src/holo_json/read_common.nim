@@ -21,7 +21,7 @@ else:
   const impl = parseEnum[JsonReaderImplementation](holoJsonReaderImpl)
 
 when impl in {JsonLoadReader, JsonTrackedLoadReader}:
-  import holo_flow/load_reader
+  import flue/load_reader
   export load_reader
 
   when impl == JsonTrackedLoadReader:
@@ -41,7 +41,7 @@ when impl in {JsonLoadReader, JsonTrackedLoadReader}:
       JsonReaderArg* = var JsonReader
         ## reader implementation used in the default `read` hook implementation signatures
         ## 
-        ## implementing type has to match API in https://holo-nim.github.io/holo-flow/docs/reader_api
+        ## implementing type has to match API in https://holo-nim.github.io/flue/docs/reader_api
 
     proc initJsonReader*(doLineColumn = holoJsonLineColumn): JsonReader {.inline.} =
       result = initLoadReader()
@@ -49,7 +49,7 @@ when impl in {JsonLoadReader, JsonTrackedLoadReader}:
     template supportsLineColumn*(reader: JsonReaderArg): bool =
       false
 elif impl in {JsonViewReader, JsonTrackedViewReader}:
-  import holo_flow/[view_reader, reader_common]
+  import flue/[view_reader, reader_common]
   export view_reader
 
   when impl == JsonTrackedViewReader:

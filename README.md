@@ -133,7 +133,7 @@ Not compatible with jsony's parsing/conversion behavior.
 
 ### Data handling
 
-* Instead of working on bare strings, reader and writer types from [holo-flow](https://github.com/holo-nim/holo-flow) are used. These keep the lightness of strings and allow loading from/flushing to streams as necessary.
+* Instead of working on bare strings, reader and writer types from [flue](https://github.com/holo-nim/flue) are used. These keep the lightness of strings and allow loading from/flushing to streams as necessary.
 
 * The existence of the format and reader/writer objects allows for line/column handling and options for different behavior, a potential option is for pretty output but is not implemented yet.
 
