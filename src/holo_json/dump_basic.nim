@@ -6,8 +6,7 @@ import std/math # for classify
 export JsonWriter, JsonWriterArg, initJsonWriter, startWrite, finishWrite, write
 
 proc dump*(format: JsonDumpFormat, writer: JsonWriterArg, v: string)
-type t[T] = tuple[a: string, b: T]
-proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, t[T]])
+proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]])
 proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, T])
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: seq[T])
 proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T)
@@ -422,12 +421,12 @@ proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) =
       mapFieldOutput(v, mappings, nil, jsonDefaultOutputName, onFieldOutput)
   writer.write '}'
 
-proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, t[T]]) =
+proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]]) =
   mixin dump
   writer.write '{'
   var needsComma = false
   # Normal objects.
-  for (k, e) in v:
+  for (k, e) in v.items:
     if needsComma: writer.write ','
     else: needsComma = true
     format.dump(writer, k)
