@@ -47,31 +47,31 @@ proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: Option[T]) {.inl
     format.dump(writer, v.get())
 
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: HashSet[T]) =
-  mixin dump
+  mixin dump, items
   var arr: ArrayDump
   format.withArrayDump(writer, arr):
-    for e in v:
+    for e in v.items:
       format.withArrayItem(writer, arr):
         format.dump(writer, e)
 
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: OrderedSet[T]) =
-  mixin dump
+  mixin dump, items
   var arr: ArrayDump
   format.withArrayDump(writer, arr):
-    for e in v:
+    for e in v.items:
       format.withArrayItem(writer, arr):
         format.dump(writer, e)
 
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: set[T]) =
-  mixin dump
+  mixin dump, items
   var arr: ArrayDump
   format.withArrayDump(writer, arr):
-    for e in v:
+    for e in v.items:
       format.withArrayItem(writer, arr):
         format.dump(writer, e)
 
 template stringTableImpl(format, writer, tab, K, V) =
-  mixin dump
+  mixin dump, pairs
   # not in original jsony
   when tab is ref:
     if isNil(v):
@@ -79,7 +79,7 @@ template stringTableImpl(format, writer, tab, K, V) =
       return
   var obj: ObjectDump
   format.withObjectDump(writer, obj):
-    for k, v in tab:
+    for k, v in tab.pairs:
       format.withObjectField(writer, obj, $k):
         format.dump writer, v
 
@@ -96,7 +96,7 @@ proc dump*[K: string | enum](format: JsonDumpFormat, writer: JsonWriterArg, tab:
   stringTableImpl(format, writer, tab, K, int)
 
 template anyTableImpl(format, writer, tab, K, V) =
-  mixin dump
+  mixin dump, pairs
   # not in original jsony
   when tab is ref:
     if isNil(v):
@@ -104,7 +104,7 @@ template anyTableImpl(format, writer, tab, K, V) =
       return
   var arr: ArrayDump
   format.withArrayDump(writer, arr):
-    for k, v in tab:
+    for k, v in tab.pairs:
       format.withArrayItem(writer, arr):
         var pair: ArrayDump
         format.withArrayDump(writer, pair):
