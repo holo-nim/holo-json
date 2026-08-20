@@ -9,7 +9,7 @@ proc dump*(format: JsonDumpFormat, writer: JsonWriterArg, v: string)
 proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]])
 proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, T])
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: seq[T])
-proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T)
+proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inline.}
 proc dump*[T: distinct](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inline.}
 
 proc dump*[T: distinct](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inline.} =
@@ -379,14 +379,7 @@ template dumpKey(writer: JsonWriterArg, v: static string) =
   const v2 = holo_json.toJson(v) & ":"
   writer.write v2
 
-proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) =
-  mixin dump
-  when false: # refs disabled
-    when T is ref:
-      if v.isNil:
-        writer.write "null"
-        return
-  writer.write '{'
+proc dumpFields*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) =
   var needsComma = false
   when jsonyPairsObject and compiles(for k, e in v.pairs: discard):
     # Tables and table like objects.
@@ -419,6 +412,16 @@ proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) =
       const mappings = getActualFieldMappings(T, HoloJson)
       # XXX no normalizer support
       mapFieldOutput(v, mappings, nil, jsonDefaultOutputName, onFieldOutput)
+
+proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inline.} =
+  mixin dump
+  when false: # refs disabled
+    when T is ref:
+      if v.isNil:
+        writer.write "null"
+        return
+  writer.write '{'
+  dumpFields(format, writer, v)
   writer.write '}'
 
 proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]]) =
