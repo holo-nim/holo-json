@@ -1,6 +1,7 @@
 ## implements dumping behavior for basic types 
 
-import ./[common, dump_common], std/[typetraits, unicode]
+# helpers imported mostly for relevant types:
+import ./[common, dump_common, dump_helpers], std/[typetraits, unicode]
 import std/math # for classify
 
 export JsonWriter, JsonWriterArg, initJsonWriter, startWrite, finishWrite, write
@@ -324,16 +325,29 @@ proc dump*(format: JsonDumpFormat, writer: JsonWriterArg, v: char) =
     writer.write v
   writer.write '"'
 
-proc dump*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, v: T) =
+proc dumpItems*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, arr: var ArrayDump, v: T) =
   mixin dump
-  # XXX different for named tuple?
-  writer.write '['
-  var needsComma = false
   for _, e in v.fieldPairs:
-    if needsComma: writer.write ','
-    else: needsComma = true
+    withArrayItem(format, writer, arr):
+      format.dump(writer, e)
+
+template dumpKey(writer: JsonWriterArg, v: static string) =
+  const v2 = holo_json.toJson(v) & ":"
+  writer.write v2
+
+proc dumpFields*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, obj: var ObjectDump, v: T) =
+  mixin dump
+  for k, e in v.fieldPairs:
+    if obj.needsComma: writer.write ','
+    else: obj.needsComma = true
+    format.dumpKey(writer, k)
     format.dump(writer, e)
-  writer.write ']'
+
+proc dump*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, v: T) =
+  # XXX different for named tuple?
+  var arr: ArrayDump
+  withArrayDump(format, writer, arr):
+    dumpItems(format, writer, arr, v)
 
 template dumpStaticStr(writer: JsonWriterArg, s: static string) =
   const s2 = holo_json.toJson(s)
@@ -356,6 +370,12 @@ proc dump*[T: enum](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inlin
   of EnumOrd:
     format.dump(writer, ord(v))
 
+proc dumpItems*[T](format: JsonDumpFormat, writer: JsonWriterArg, arr: var ArrayDump, v: openArray[T]) =
+  mixin dump
+  for i, e in v:
+    withArrayItem(format, writer, arr):
+      format.dump(writer, e)
+
 proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, T]) =
   mixin dump
   writer.write '['
@@ -375,17 +395,13 @@ proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: seq[T]) =
     format.dump(writer, e)
   writer.write ']'
 
-template dumpKey(writer: JsonWriterArg, v: static string) =
-  const v2 = holo_json.toJson(v) & ":"
-  writer.write v2
-
-proc dumpFields*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) =
-  var needsComma = false
+proc dumpFields*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, obj: var ObjectDump, v: T) =
+  mixin dump
   when jsonyPairsObject and compiles(for k, e in v.pairs: discard):
     # Tables and table like objects.
     for k, e in v.pairs:
-      if needsComma: writer.write ','
-      else: needsComma = true
+      if obj.needsComma: writer.write ','
+      else: obj.needsComma = true
       format.dump(writer, k)
       writer.write ':'
       format.dump(writer, e)
@@ -399,14 +415,14 @@ proc dumpFields*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T)
           discard
         else:
           # original jsony does not have rename hook here
-          if needsComma: writer.write ','
-          else: needsComma = true
+          if obj.needsComma: writer.write ','
+          else: obj.needsComma = true
           writer.dumpKey(k)
           format.dump(writer, e)
     else:
       template onFieldOutput(f, fName) =
-        if needsComma: writer.write ','
-        else: needsComma = true
+        if obj.needsComma: writer.write ','
+        else: obj.needsComma = true
         writer.dumpKey(fName)
         format.dump(writer, f)
       const mappings = getActualFieldMappings(T, HoloJson)
@@ -414,15 +430,14 @@ proc dumpFields*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T)
       mapFieldOutput(v, mappings, nil, jsonDefaultOutputName, onFieldOutput)
 
 proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inline.} =
-  mixin dump
   when false: # refs disabled
     when T is ref:
       if v.isNil:
         writer.write "null"
         return
-  writer.write '{'
-  dumpFields(format, writer, v)
-  writer.write '}'
+  var obj: ObjectDump
+  withObjectDump(format, writer, obj):
+    dumpFields(format, writer, v)
 
 proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]]) =
   mixin dump
