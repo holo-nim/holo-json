@@ -437,7 +437,7 @@ proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inl
         return
   var obj: ObjectDump
   withObjectDump(format, writer, obj):
-    dumpFields(format, writer, v)
+    dumpFields(format, writer, obj, v)
 
 proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]]) =
   mixin dump
