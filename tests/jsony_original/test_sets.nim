@@ -8,8 +8,8 @@ block:
   doAssert s1.toJson() == "[9,1,5]"
   doAssert s2.toJson() == "[3,5,7]"
 
-  doAssert s1.toJson.fromJson(type(s1)) == s1
-  doAssert s2.toJson.fromJson(type(s2)) == s2
+  doAssert s1.toJson.fromJsonAs(type(s1)) == s1
+  doAssert s2.toJson.fromJsonAs(type(s2)) == s2
 
 block:
   let
@@ -19,8 +19,8 @@ block:
   doAssert s1.toJson() == "[1,2,3]"
   doAssert s2.toJson() == "[1,2,3]"
 
-  doAssert s1.toJson.fromJson(set[int8]) == s1
-  doAssert s2.toJson.fromJson(set[int16]) == s2
+  doAssert s1.toJson.fromJsonAs(set[int8]) == s1
+  doAssert s2.toJson.fromJsonAs(set[int16]) == s2
 
 block:
   let
@@ -30,8 +30,8 @@ block:
   doAssert s1.toJson() == "[1,2,3]"
   doAssert s2.toJson() == "[1,2,3]"
 
-  doAssert s1.toJson.fromJson(set[uint8]) == s1
-  doAssert s2.toJson.fromJson(set[uint16]) == s2
+  doAssert s1.toJson.fromJsonAs(set[uint8]) == s1
+  doAssert s2.toJson.fromJsonAs(set[uint16]) == s2
 
 block:
   let
@@ -39,7 +39,7 @@ block:
 
   doAssert s1.toJson() == """["0","1","2","3","4","5","6","7","8","9"]"""
 
-  doAssert s1.toJson.fromJson(set[char]) == s1
+  doAssert s1.toJson.fromJsonAs(set[char]) == s1
 
 block:
   type
@@ -59,9 +59,9 @@ block:
   doAssert s2.toJson() == """["custString1","custString2","custString3"]"""
   doAssert s3.toJson() == """["e3Elem1","e3Elem2","e3Elem3"]"""
 
-  doAssert s1.toJson.fromJson(set[E1]) == s1
-  doAssert s2.toJson.fromJson(set[E2]) == s2
-  doAssert s3.toJson.fromJson(set[E3]) == s3
+  doAssert s1.toJson.fromJsonAs(set[E1]) == s1
+  doAssert s2.toJson.fromJsonAs(set[E2]) == s2
+  doAssert s3.toJson.fromJsonAs(set[E3]) == s3
 
 block:
   type
@@ -73,4 +73,4 @@ block:
     s1: S1 = {e1Elem1, e1Elem2, e1Elem3}
 
   doAssert s1.toJson() == """["e1Elem1","e1Elem2","e1Elem3"]"""
-  doAssert s1.toJson.fromJson(set[E1]) == s1
+  doAssert s1.toJson.fromJsonAs(set[E1]) == s1

@@ -24,7 +24,7 @@ block:
 
   timeIt "holo_json", 100:
     for i in 0 ..< 1000:
-      keep holo_json.fromJson(jsonStr, string)
+      keep holo_json.fromJsonAs(jsonStr, string)
 
   timeIt "holo_json no line column", 100:
     var reader = initJsonReader(doLineColumn = false)
@@ -54,7 +54,7 @@ block:
       keep jsony.fromJson(jsonStr, Node)
   timeIt "holo_json", 100:
     for i in 0 ..< 1000:
-      keep holo_json.fromJson(jsonStr, Node)
+      keep holo_json.fromJsonAs(jsonStr, Node)
 
   timeIt "holo_json no line column", 100:
     var reader = initJsonReader(doLineColumn = false)
@@ -85,7 +85,7 @@ block:
   timeIt "treeform/jsony", 100:
     keep jsony.fromJson(jsonStr, seq[Node])
   timeIt "holo_json", 100:
-    keep holo_json.fromJson(jsonStr, seq[Node])
+    keep holo_json.fromJsonAs(jsonStr, seq[Node])
 
   timeIt "holo_json no line column", 100:
     var reader = initJsonReader(doLineColumn = false)

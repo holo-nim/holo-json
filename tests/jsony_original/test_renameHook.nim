@@ -9,7 +9,7 @@ proc renameHook(v: var derefType(Node), fieldName: var string) =
   if fieldName == "type":
     fieldName = "kind"
 
-var node = """{"type":"root"}""".fromJson(Node)
+var node = """{"type":"root"}""".fromJsonAs(Node)
 doAssert node.kind == "root"
 
 type
@@ -38,10 +38,10 @@ proc renameHook*(v: var derefType(RefNode)|ValueNode, fieldName: var string) =
 # Test renameHook and discriminator Field Name not being first/missing.
 block:
   let
-    a = """{"active":true,"type":"nkFloat","floatVal":3.14}""".fromJson(RefNode)
-    b = """{"floatVal":3.14,"active":true,"type":"nkFloat"}""".fromJson(RefNode)
-    c = """{"type":"nkFloat","floatVal":3.14,"active":true}""".fromJson(RefNode)
-    d = """{"active":true,"intVal":42}""".fromJson(RefNode)
+    a = """{"active":true,"type":"nkFloat","floatVal":3.14}""".fromJsonAs(RefNode)
+    b = """{"floatVal":3.14,"active":true,"type":"nkFloat"}""".fromJsonAs(RefNode)
+    c = """{"type":"nkFloat","floatVal":3.14,"active":true}""".fromJsonAs(RefNode)
+    d = """{"active":true,"intVal":42}""".fromJsonAs(RefNode)
   doAssert a.kind == nkFloat
   doAssert b.kind == nkFloat
   doAssert c.kind == nkFloat
@@ -49,10 +49,10 @@ block:
 
 block:
   let
-    a = """{"active":true,"type":"nkFloat","floatVal":3.14}""".fromJson(ValueNode)
-    b = """{"floatVal":3.14,"active":true,"type":"nkFloat"}""".fromJson(ValueNode)
-    c = """{"type":"nkFloat","floatVal":3.14,"active":true}""".fromJson(ValueNode)
-    d = """{"active":true,"intVal":42}""".fromJson(ValueNode)
+    a = """{"active":true,"type":"nkFloat","floatVal":3.14}""".fromJsonAs(ValueNode)
+    b = """{"floatVal":3.14,"active":true,"type":"nkFloat"}""".fromJsonAs(ValueNode)
+    c = """{"type":"nkFloat","floatVal":3.14,"active":true}""".fromJsonAs(ValueNode)
+    d = """{"active":true,"intVal":42}""".fromJsonAs(ValueNode)
   doAssert a.kind == nkFloat
   doAssert b.kind == nkFloat
   doAssert c.kind == nkFloat
@@ -70,4 +70,4 @@ proc renameHook*(v: var FooBar, fieldName: var string) =
   if fieldName == "Foo Bar":
     fieldName = "FooBar"
 
-echo jsonString.fromJson(FooBar)
+echo jsonString.fromJsonAs(FooBar)

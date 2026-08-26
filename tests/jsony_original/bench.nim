@@ -49,7 +49,7 @@ timeIt "treeform/jsony", 100:
   keep jsony.fromJson(treeStr, Node)
 
 timeIt "holo_json", 100:
-  keep holo_json.fromJson(treeStr, Node)
+  keep holo_json.fromJsonAs(treeStr, Node)
 
 timeIt "holo_json no line column", 100:
   var reader = initJsonReader(doLineColumn = false)

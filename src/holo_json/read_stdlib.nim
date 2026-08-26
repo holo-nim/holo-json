@@ -74,7 +74,7 @@ proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var JsonNode) =
 
 proc fromJson*(s: string): JsonNode {.inline.} =
   ## Takes json parses it into `JsonNode`s.
-  result = fromJson(s, JsonNode)
+  result = fromJson(JsonNode, s)
 
 proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var Option[T]) =
   ## Parse an Option.

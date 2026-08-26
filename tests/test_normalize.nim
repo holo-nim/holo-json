@@ -12,4 +12,4 @@ proc normalizeField*(foo: typedesc[Bar], format: type JsonReadFormat, name: stri
   normalize(name)
 
 let ser = """{"Abc_d_Ef": "abc", "XyZ": "xyz", "uuuuu": 123}"""
-doAssert ser.fromJson(Bar)[] == Bar(e: 123, abcDef: "abc", x_Y_z: "xyz")[], $ser.fromJson(Bar)[]
+doAssert Bar.fromJson(ser)[] == Bar(e: 123, abcDef: "abc", x_Y_z: "xyz")[], $Bar.fromJson(ser)[]

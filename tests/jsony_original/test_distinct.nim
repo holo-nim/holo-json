@@ -14,5 +14,5 @@ proc `==`*(a, b: Timestamp): bool =
 var t = Timestamp(123.123)
 
 doAssert t.toJson() == "123.123"
-doAssert "1234.123".fromJson(Timestamp) == Timestamp(1234.123)
-doAssert t.toJson().fromJson(Timestamp) == t
+doAssert "1234.123".fromJsonAs(Timestamp) == Timestamp(1234.123)
+doAssert t.toJson().fromJsonAs(Timestamp) == t
