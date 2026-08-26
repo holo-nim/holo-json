@@ -52,14 +52,14 @@ for i in 0 ..< 10000:
   data[pos] = value
   echo &"{i} {pos} {value.uint8}"
   try:
-    let node = data.fromJson(Node)
+    let node = data.fromJsonAs(Node)
     doAssert node != nil
   except CatchableError:
     discard
 
   var data2 = data[0 ..< pos]
   try:
-    let node = data2.fromJson(Node)
+    let node = data2.fromJsonAs(Node)
     doAssert node != nil
   except CatchableError:
     discard

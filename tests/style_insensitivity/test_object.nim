@@ -9,4 +9,4 @@ type
     e {.mapping: "uUu_Uu".}: int
 
 let ser = """{"Abc_d_Ef": "abc", "xyZ": "xyz", "uuuuu": 123}"""
-doAssert ser.fromJson(Bar)[] == Bar(e: 123, AbcDef: "abc", x_Y_z: "xyz")[], $ser.fromJson(Bar)[]
+doAssert Bar.fromJson(ser)[] == Bar(e: 123, AbcDef: "abc", x_Y_z: "xyz")[], $Bar.fromJson(ser)[]

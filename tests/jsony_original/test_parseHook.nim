@@ -16,7 +16,7 @@ proc read(format: JsonReadFormat, reader: JsonReaderArg, v: var Fraction) =
   v.numerator = parseInt(arr[0])
   v.denominator = parseInt(arr[1])
 
-var frac = """ "1/3" """.fromJson(Fraction)
+var frac = """ "1/3" """.fromJsonAs(Fraction)
 doAssert frac.numerator == 1
 doAssert frac.denominator == 3
 
@@ -26,7 +26,7 @@ when doTimes:
     read(format, reader, str)
     v = parse(str, "yyyy-MM-dd hh:mm:ss")
 
-  var dt = """ "2020-01-01 00:00:00" """.fromJson(DateTime)
+  var dt = """ "2020-01-01 00:00:00" """.fromJsonAs(DateTime)
   doAssert dt.year == 2020
 
 type Entry = object
@@ -47,7 +47,7 @@ proc read(format: JsonReadFormat, reader: JsonReaderArg, v: var seq[Entry]) =
     entry.id = k
     v.add(entry)
 
-let s = data.fromJson(seq[Entry])
+let s = data.fromJsonAs(seq[Entry])
 doAssert type(s) is seq[Entry]
 for entry in s:
   if entry.id == "1":
@@ -80,7 +80,7 @@ proc read(format: JsonReadFormat, reader: JsonReaderArg, v: var Entry2) =
   v.post = entry["changes"][1].getInt()
   v.kind = entry["changes"][2].getStr()
 
-let s2 = data2.fromJson(Entry2)
+let s2 = data2.fromJsonAs(Entry2)
 doAssert type(s2) is Entry2
 doAssert $s2 == """(id: 3444, pre: 1, post: 2, kind: "hi")"""
 
@@ -122,7 +122,7 @@ let data3 = """{
   "Set-Cookie": "name=value; name2=value2; name3=value3d"
 }"""
 
-let headers = data3.fromJson(seq[Header])
+let headers = data3.fromJsonAs(seq[Header])
 doAssert headers[0].key == "Cache-Control"
 doAssert headers[0].value == "private, max-age=0d"
 doAssert headers[1].key == "Content-Encoding"

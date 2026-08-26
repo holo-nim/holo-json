@@ -7,14 +7,14 @@ var
 doAssert a.toJson() == """123"""
 doAssert b.toJson() == """null"""
 
-doAssert """1""".fromJson(Option[int]) == some(1)
-doAssert """null""".fromJson(Option[int]) == none(int)
+doAssert """1""".fromJsonAs(Option[int]) == some(1)
+doAssert """null""".fromJsonAs(Option[int]) == none(int)
 
 proc check[T](v: T) =
   var v2 = some(v)
   var v3 = none(type(v))
-  doAssert v2.toJson.fromJson(Option[T]) == v2
-  doAssert v3.toJson.fromJson(Option[T]) == v3
+  doAssert v2.toJson.fromJsonAs(Option[T]) == v2
+  doAssert v3.toJson.fromJsonAs(Option[T]) == v3
 
 check(1.int)
 check(1.int8)
@@ -38,8 +38,8 @@ check(Entry())
 type
   Test = object
     key: Option[int]
-var test = """{ "key": null }""".fromJson(Test)
+var test = """{ "key": null }""".fromJsonAs(Test)
 doAssert test.key.isNone == true
-var test2 = """{ "key": 2 }""".fromJson(Test)
+var test2 = """{ "key": 2 }""".fromJsonAs(Test)
 doAssert test2.key.isNone == false
 doAssert test2.key.get == 2

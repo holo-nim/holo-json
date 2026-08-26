@@ -37,8 +37,8 @@ import std/json
 
 let obj1 = Bar(a: "foo", b: 1, c: 123, d: true, notRenamed: "bar", e: 456)
 let ser = toJson(obj1)
-doAssert ser.fromJson(JsonNode) == %*{"u":456,"x":"foo","y":1,"z":123,"t":true,"not_renamed":"bar"}
-let obj2 = fromJson(ser, Bar)
+doAssert JsonNode.fromJson(ser) == %*{"u":456,"x":"foo","y":1,"z":123,"t":true,"not_renamed":"bar"}
+let obj2 = fromJson(Bar, ser)
 doAssert obj1.a == obj2.a
 doAssert obj1.b == obj2.b
 doAssert obj1.c == obj2.c

@@ -4,7 +4,7 @@ block:
   type Entry1 = object
     color: string
   var s = "{}"
-  var v = s.fromJson(Entry1)
+  var v = s.fromJsonAs(Entry1)
   doAssert v.color == ""
 
 when NimMajor >= 2: # Default field values are only supported in Nim 2.0+
@@ -13,7 +13,7 @@ when NimMajor >= 2: # Default field values are only supported in Nim 2.0+
       legs: int = 4
 
     var s = "{}"
-    var f = s.fromJson(Frog)
+    var f = s.fromJsonAs(Frog)
     # Make sure the default value is deserialized correctly.
     doAssert f.legs == 4
 
@@ -23,7 +23,7 @@ block:
     a: string
     ratio: float32
   var s = """{"field":"is here", "a":"b", "ratio":22.5}"""
-  var v = s.fromJson(Foo2)
+  var v = s.fromJsonAs(Foo2)
   doAssert v.field == "is here"
   doAssert v.a == "b"
   doAssert v.ratio == 22.5
@@ -35,7 +35,7 @@ type
     id: string
     bar: Bar3
 var s = """{"id":"123", "bar":{"name":"abc"}}"""
-var v = s.fromJson(Foo3)
+var v = s.fromJsonAs(Foo3)
 doAssert v.id == "123"
 doAssert v.bar.name == "abc"
 
@@ -57,7 +57,7 @@ proc startObjectRead(format: JsonReadFormat, reader: JsonReaderArg, foo: var der
 
 block:
   var s = """{"id":"123", "bar":{"name":"abc", "visible": "yes"}}"""
-  var v = s.fromJson(Foo4)
+  var v = s.fromJsonAs(Foo4)
   doAssert v.id == "123"
   doAssert v.visible == "yes"
   doAssert v.bar.name == "abc"
@@ -73,20 +73,20 @@ proc startObjectRead(format: JsonReadFormat, reader: JsonReaderArg, foo: var Foo
 
 block:
   var s = """{"id":"123", "visible": "yes"}"""
-  var v = s.fromJson(Foo5)
+  var v = s.fromJsonAs(Foo5)
   echo v
   doAssert v.id == "123"
   doAssert v.visible == "yes"
 
 block:
   var s = """{"id":"123"}"""
-  var v = s.fromJson(Foo5)
+  var v = s.fromJsonAs(Foo5)
   doAssert v.id == "123"
   doAssert v.visible == "yes"
 
 block:
   var s = """{"id":"123", "visible": "no"}"""
-  var v = s.fromJson(Foo5)
+  var v = s.fromJsonAs(Foo5)
   doAssert v.id == "123"
   doAssert v.visible == "no"
 
@@ -94,7 +94,7 @@ block:
   type Entry2 = object
     color: string
   var s = """[{}, {"color":"red"}]"""
-  var v = s.fromJson(seq[Entry2])
+  var v = s.fromJsonAs(seq[Entry2])
   doAssert v.len == 2
   doAssert v[0].color == ""
   doAssert v[1].color == "red"
@@ -104,7 +104,7 @@ block:
   type Entry3 = object
     color: string
   var s = """[{"id":123}, {"color":"red", "id":123}, {"ex":[{"color":"red"}]}]"""
-  var v = s.fromJson(seq[Entry3])
+  var v = s.fromJsonAs(seq[Entry3])
   doAssert v.len == 3
   doAssert v[0].color == ""
   doAssert v[1].color == "red"
@@ -115,10 +115,10 @@ block:
   type Entry4 = object
     colorBlend: string
 
-  var v = """{"colorBlend":"red"}""".fromJson(Entry4)
+  var v = """{"colorBlend":"red"}""".fromJsonAs(Entry4)
   doAssert v.colorBlend == "red"
 
-  v = """{"color_blend":"red"}""".fromJson(Entry4)
+  v = """{"color_blend":"red"}""".fromJsonAs(Entry4)
   doAssert v.colorBlend == "red"
 
 proc snakeCase(s: string): string =
@@ -159,7 +159,7 @@ proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: Nullable[T]) =
   dump(format, writer, v.inner)
 block:
   var s = "null"
-  var v = s.fromJson(Nullable[Entry5])
+  var v = s.fromJsonAs(Nullable[Entry5])
   doAssert v.inner.color == ""
   doAssert v.toJson() == "null", v.toJson
 
@@ -167,7 +167,7 @@ block:
   type Entry6 = ref object
     color: string
   var s = "null"
-  var v = s.fromJson(Entry6)
+  var v = s.fromJsonAs(Entry6)
   doAssert v == nil
 
 type Sizer = object
@@ -177,7 +177,7 @@ type Sizer = object
 proc finishObjectRead(format: JsonReadFormat, reader: JsonReaderArg, v: var Sizer) =
   v.originalSize = v.size
 
-var sizer = """{"size":10}""".fromJson(Sizer)
+var sizer = """{"size":10}""".fromJsonAs(Sizer)
 doAssert sizer.size == 10
 doAssert sizer.originalSize == 10
 
@@ -201,17 +201,17 @@ block:
   block:
     var nodeNum = RefNode(kind: nkFloat, active: true, floatVal: 3.14)
     var nodeNum2 = RefNode(kind: nkInt, active: false, intVal: 42)
-    doAssert nodeNum.toJson.fromJson(type(nodeNum)).floatVal == nodeNum.floatVal
-    doAssert nodeNum2.toJson.fromJson(type(nodeNum2)).intVal == nodeNum2.intVal
-    doAssert nodeNum.toJson.fromJson(type(nodeNum)).active == nodeNum.active
-    doAssert nodeNum2.toJson.fromJson(type(nodeNum2)).active == nodeNum2.active
+    doAssert nodeNum.toJson.fromJsonAs(type(nodeNum)).floatVal == nodeNum.floatVal
+    doAssert nodeNum2.toJson.fromJsonAs(type(nodeNum2)).intVal == nodeNum2.intVal
+    doAssert nodeNum.toJson.fromJsonAs(type(nodeNum)).active == nodeNum.active
+    doAssert nodeNum2.toJson.fromJsonAs(type(nodeNum2)).active == nodeNum2.active
 
   block:
     # Test discriminator Field Name not being first.
     let
-      a = """{"active":true,"kind":"nkFloat","floatVal":3.14}""".fromJson(RefNode)
-      b = """{"floatVal":3.14,"active":true,"kind":"nkFloat"}""".fromJson(RefNode)
-      c = """{"kind":"nkFloat","floatVal":3.14,"active":true}""".fromJson(RefNode)
+      a = """{"active":true,"kind":"nkFloat","floatVal":3.14}""".fromJsonAs(RefNode)
+      b = """{"floatVal":3.14,"active":true,"kind":"nkFloat"}""".fromJsonAs(RefNode)
+      c = """{"kind":"nkFloat","floatVal":3.14,"active":true}""".fromJsonAs(RefNode)
     doAssert a.kind == nkFloat
     doAssert b.kind == nkFloat
     doAssert c.kind == nkFloat
@@ -219,23 +219,23 @@ block:
   block:
     # Test discriminator field name not being there.
     let
-      a = """{"active":true,"intVal":42}""".fromJson(RefNode)
+      a = """{"active":true,"intVal":42}""".fromJsonAs(RefNode)
     doAssert a.kind == nkInt
 
   block:
     var nodeNum = ValueNode(kind: nkFloat, active: true, floatVal: 3.14)
     var nodeNum2 = ValueNode(kind: nkInt, active: false, intVal: 42)
-    doAssert nodeNum.toJson.fromJson(type(nodeNum)).floatVal == nodeNum.floatVal
-    doAssert nodeNum2.toJson.fromJson(type(nodeNum2)).intVal == nodeNum2.intVal
-    doAssert nodeNum.toJson.fromJson(type(nodeNum)).active == nodeNum.active
-    doAssert nodeNum2.toJson.fromJson(type(nodeNum2)).active == nodeNum2.active
+    doAssert nodeNum.toJson.fromJsonAs(type(nodeNum)).floatVal == nodeNum.floatVal
+    doAssert nodeNum2.toJson.fromJsonAs(type(nodeNum2)).intVal == nodeNum2.intVal
+    doAssert nodeNum.toJson.fromJsonAs(type(nodeNum)).active == nodeNum.active
+    doAssert nodeNum2.toJson.fromJsonAs(type(nodeNum2)).active == nodeNum2.active
 
   block:
     # Test discriminator Field Name not being first.
     let
-      a = """{"active":true,"kind":"nkFloat","floatVal":3.14}""".fromJson(ValueNode)
-      b = """{"floatVal":3.14,"active":true,"kind":"nkFloat"}""".fromJson(ValueNode)
-      c = """{"kind":"nkFloat","floatVal":3.14,"active":true}""".fromJson(ValueNode)
+      a = """{"active":true,"kind":"nkFloat","floatVal":3.14}""".fromJsonAs(ValueNode)
+      b = """{"floatVal":3.14,"active":true,"kind":"nkFloat"}""".fromJsonAs(ValueNode)
+      c = """{"kind":"nkFloat","floatVal":3.14,"active":true}""".fromJsonAs(ValueNode)
     doAssert a.kind == nkFloat
     doAssert b.kind == nkFloat
     doAssert c.kind == nkFloat
@@ -243,5 +243,5 @@ block:
   block:
     # Test discriminator field name not being there.
     let
-      a = """{"active":true,"intVal":42}""".fromJson(ValueNode)
+      a = """{"active":true,"intVal":42}""".fromJsonAs(ValueNode)
     doAssert a.kind == nkInt

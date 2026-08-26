@@ -13,14 +13,14 @@ doAssert b.toJson() == """null"""
 
 when not defined(js):
   # JS has a bug with ref ints: https://github.com/nim-lang/Nim/issues/21317
-  doAssert $(fromJson("""1""", ref int)[]) == "1"
-  doAssert fromJson("""null""", ref int) == nil
+  doAssert $(fromJsonAs("""1""", ref int)[]) == "1"
+  doAssert fromJsonAs("""null""", ref int) == nil
 
   proc check[T](v: T) =
     var v2: ref T = newRef(v)
     var v3: ref T = nil
-    doAssert v2.toJson.fromJson(ref T)[] == v2[]
-    doAssert v3.toJson.fromJson(ref T) == nil
+    doAssert v2.toJson.fromJsonAs(ref T)[] == v2[]
+    doAssert v3.toJson.fromJsonAs(ref T) == nil
 
   check(1.int)
   check(1.int8)
@@ -44,8 +44,8 @@ when not defined(js):
 type
   Test = object
     key: ref int
-var test = """{ "key": null }""".fromJson(Test)
+var test = """{ "key": null }""".fromJsonAs(Test)
 doAssert test.key == nil
-var test2 = """{ "key": 2 }""".fromJson(Test)
+var test2 = """{ "key": 2 }""".fromJsonAs(Test)
 doAssert test2.key != nil
 doAssert test2.key[] == 2

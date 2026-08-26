@@ -2,14 +2,14 @@ import holo_json
 
 block:
   var s = "[1, 2, 3]"
-  var v = s.fromJson((int, int, int))
+  var v = s.fromJsonAs((int, int, int))
   doAssert v[0] == 1
   doAssert v[1] == 2
   doAssert v[2] == 3
 
 block:
   var s = """[1, "hi", 3.5]"""
-  var v = s.fromJson((int, string, float32))
+  var v = s.fromJsonAs((int, string, float32))
   doAssert v[0] == 1
   doAssert v[1] == "hi"
   doAssert v[2] == 3.5
@@ -17,7 +17,7 @@ block:
 block:
   type Vector3i = tuple[x: int, y: int, z: int]
   var s = """[0, 1, 2]"""
-  var v = s.fromJson(Vector3i)
+  var v = s.fromJsonAs(Vector3i)
   doAssert v[0] == 0
   doAssert v[1] == 1
   doAssert v[2] == 2
@@ -28,7 +28,7 @@ block:
 block:
   type Entry = tuple[id: int, name: string, dist: float32]
   var s = """[134, "red", 13.5]"""
-  var v = s.fromJson(Entry)
+  var v = s.fromJsonAs(Entry)
   doAssert v[0] == 134
   doAssert v[1] == "red"
   doAssert v[2] == 13.5
@@ -39,7 +39,7 @@ block:
 block:
   type Entry = tuple[id: int, name: string, dist: float32]
   var s = """{"id": 134, "name": "red", "dist": 13.5}"""
-  var v = s.fromJson(Entry)
+  var v = s.fromJsonAs(Entry)
   doAssert v[0] == 134
   doAssert v[1] == "red"
   doAssert v[2] == 13.5
@@ -49,7 +49,7 @@ block:
 block:
   type Entry = tuple[id: int, name: string, dist: float32]
   var s = """[{"id": 134, "name": "red", "dist": 13.5}]"""
-  var entries = s.fromJson(seq[Entry])
+  var entries = s.fromJsonAs(seq[Entry])
   doAssert entries.len == 1
   var v = entries[0]
   doAssert v.dist == 13.5
@@ -66,6 +66,6 @@ proc finishObjectRead(format: JsonReadFormat, reader: JsonReaderArg, entry: var 
 
 block:
   var s = """{"id": 6, "name": "red"}"""
-  var v = s.fromJson(EntryForHook)
+  var v = s.fromJsonAs(EntryForHook)
   doAssert v.id == 42
   doAssert v.name == "red"

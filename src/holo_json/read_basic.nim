@@ -481,7 +481,7 @@ proc readJson*[T](reader: JsonReaderArg, _: typedesc[T]): T {.inline.} =
   mixin read
   read(JsonReadFormat(), reader, result)
 
-proc fromJson*[T](s: string, x: typedesc[T], format = JsonReadFormat()): T {.inline.} =
+proc fromJson*[T](x: typedesc[T], s: string, format = JsonReadFormat()): T {.inline.} =
   ## Takes json and outputs the object it represents.
   ## * Extra json fields are ignored.
   ## * Missing json fields keep their default values.
@@ -496,3 +496,6 @@ proc fromJson*[T](s: string, x: typedesc[T], format = JsonReadFormat()): T {.inl
     var msg = "Found non-whitespace character after JSON data: "
     msg.addQuoted(reader.peekOrZero())
     reader.parseError(msg)
+
+proc fromJsonAs*[T](s: string, x: typedesc[T], format = JsonReadFormat()): T {.inline.} =
+  fromJson(T, s, format)

@@ -9,9 +9,9 @@ type
     of FieldB: b: string
     of FieldC: c: float
 
-let x = fromJson(r"{""a"": 123}", Foo) # (kind: FieldA, a: 123)
+let x = fromJson(Foo, r"{""a"": 123}") # (kind: FieldA, a: 123)
 doAssert x.kind == FieldA
 doAssert x.a == 123
-let y = fromJson(r"{""b"": ""xyz""}", Foo) # (kind: FieldB, b: "xyz")
+let y = fromJson(Foo, r"{""b"": ""xyz""}") # (kind: FieldB, b: "xyz")
 doAssert y.kind == FieldB
 doAssert y.b == "xyz"

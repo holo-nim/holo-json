@@ -14,13 +14,13 @@ proc getFieldMappings(T: type Color, group: static MappingGroup): FieldMappingPa
     "cGreen": FieldMapping(),
   }
 
-doAssert "0".fromJson(Color) == cRed
-doAssert "1".fromJson(Color) == cBlue
-doAssert "2".fromJson(Color) == cGreen
+doAssert Color.fromJson("0") == cRed
+doAssert Color.fromJson("1") == cBlue
+doAssert Color.fromJson("2") == cGreen
 
-doAssert """ "cRed" """.fromJson(Color) == cRed
-doAssert """ "cBlue" """.fromJson(Color) == cBlue
-doAssert """ "cGreen" """.fromJson(Color) == cGreen
+doAssert Color.fromJson(""" "cRed" """) == cRed
+doAssert Color.fromJson(""" "cBlue" """) == cBlue
+doAssert Color.fromJson(""" "cGreen" """) == cGreen
 
 # custom:
 
@@ -36,6 +36,6 @@ proc getFieldMappings(T: type Color2, group: static MappingGroup): FieldMappingP
     "c2Green": toFieldMapping "GREEN"
   }
 
-doAssert """ "RED" """.fromJson(Color2) == c2Red
-doAssert """ "BLUE" """.fromJson(Color2) == c2Blue
-doAssert """ "GREEN" """.fromJson(Color2) == c2Green
+doAssert Color2.fromJson(""" "RED" """) == c2Red
+doAssert Color2.fromJson(""" "BLUE" """) == c2Blue
+doAssert Color2.fromJson(""" "GREEN" """) == c2Green

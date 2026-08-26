@@ -4,7 +4,7 @@ type Node = ref object
   kind {.mapping: "type".}: string
 
 const nodeJson = """{"type":"root"}"""
-var node = nodeJson.fromJson(Node)
+var node = Node.fromJson(nodeJson)
 doAssert node.kind == "root"
 doAssert node.toJson() == nodeJson
 
@@ -29,33 +29,33 @@ type
 # Test renameHook and discriminator Field Name not being first/missing.
 block:
   let
-    a = """{"active":true,"type":"nkFloat","float_val":3.14}""".fromJson(RefNode)
-    b = """{"float_val":3.14,"active":true,"type":"nkFloat"}""".fromJson(RefNode)
-    c = """{"type":"nkFloat","float_val":3.14,"active":true}""".fromJson(RefNode)
-    d = """{"active":true,"int_val":42}""".fromJson(RefNode)
+    a = RefNode.fromJson("""{"active":true,"type":"nkFloat","float_val":3.14}""")
+    b = RefNode.fromJson("""{"float_val":3.14,"active":true,"type":"nkFloat"}""")
+    c = RefNode.fromJson("""{"type":"nkFloat","float_val":3.14,"active":true}""")
+    d = RefNode.fromJson("""{"active":true,"int_val":42}""")
   doAssert a.kind == nkFloat
   doAssert b.kind == nkFloat
   doAssert c.kind == nkFloat
   doAssert d.kind == nkInt
-  doAssert a.toJson().fromJson(RefNode).kind == a.kind
-  doAssert b.toJson().fromJson(RefNode).kind == b.kind
-  doAssert c.toJson().fromJson(RefNode).kind == c.kind
-  doAssert d.toJson().fromJson(RefNode).kind == d.kind
+  doAssert RefNode.fromJson(a.toJson()).kind == a.kind
+  doAssert RefNode.fromJson(b.toJson()).kind == b.kind
+  doAssert RefNode.fromJson(c.toJson()).kind == c.kind
+  doAssert RefNode.fromJson(d.toJson()).kind == d.kind
 
 block:
   let
-    a = """{"active":true,"type":"nkFloat","float_val":3.14}""".fromJson(ValueNode)
-    b = """{"float_al":3.14,"active":true,"type":"nkFloat"}""".fromJson(ValueNode)
-    c = """{"type":"nkFloat","float_val":3.14,"active":true}""".fromJson(ValueNode)
-    d = """{"active":true,"int_val":42}""".fromJson(ValueNode)
+    a = ValueNode.fromJson("""{"active":true,"type":"nkFloat","float_val":3.14}""")
+    b = ValueNode.fromJson("""{"float_al":3.14,"active":true,"type":"nkFloat"}""")
+    c = ValueNode.fromJson("""{"type":"nkFloat","float_val":3.14,"active":true}""")
+    d = ValueNode.fromJson("""{"active":true,"int_val":42}""")
   doAssert a.kind == nkFloat
   doAssert b.kind == nkFloat
   doAssert c.kind == nkFloat
   doAssert d.kind == nkInt
-  doAssert a.toJson().fromJson(ValueNode).kind == a.kind
-  doAssert b.toJson().fromJson(ValueNode).kind == b.kind
-  doAssert c.toJson().fromJson(ValueNode).kind == c.kind
-  doAssert d.toJson().fromJson(ValueNode).kind == d.kind
+  doAssert ValueNode.fromJson(a.toJson()).kind == a.kind
+  doAssert ValueNode.fromJson(b.toJson()).kind == b.kind
+  doAssert ValueNode.fromJson(c.toJson()).kind == c.kind
+  doAssert ValueNode.fromJson(d.toJson()).kind == d.kind
 
 import std/json
 
@@ -67,5 +67,5 @@ type
 
 const jsonString = "{\"Foo Bar\": \"Hello World\"}"
 
-doAssert jsonString.fromJson(FooBar).`Foo Bar` == "Hello World"
-doAssert jsonString.fromJson(JsonNode) == %*{"Foo Bar": "Hello World"}
+doAssert FooBar.fromJson(jsonString).`Foo Bar` == "Hello World"
+doAssert JsonNode.fromJson(jsonString) == %*{"Foo Bar": "Hello World"}

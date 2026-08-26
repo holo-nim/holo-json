@@ -3,18 +3,18 @@ import holo_json, std/tables
 block:
 
   var s = "{}"
-  var v = s.fromJson(Table[string, int])
+  var v = s.fromJsonAs(Table[string, int])
   doAssert v.len == 0
 
 block:
   var s = """{"a":2}"""
-  var v = s.fromJson(Table[string, int])
+  var v = s.fromJsonAs(Table[string, int])
   doAssert v.len == 1
   doAssert v["a"] == 2
 
 block:
   var s = """{"a":2, "b":3, "c" : 4}"""
-  var v = s.fromJson(Table[string, uint8])
+  var v = s.fromJsonAs(Table[string, uint8])
   doAssert v.len == 3
   doAssert v["a"] == 2
   doAssert v["b"] == 3
@@ -28,7 +28,7 @@ block:
     "b": {"color":"green"},
     "c": {"color":"blue"}
   }"""
-  var v = s.fromJson(Table[string, Entry])
+  var v = s.fromJsonAs(Table[string, Entry])
   doAssert v.len == 3
   doAssert v["a"].color == "red"
   doAssert v["b"].color == "green"
@@ -42,7 +42,7 @@ block:
     "b": {"color":"green"},
     "c": {"color":"blue"}
   }"""
-  var v = s.fromJson(OrderedTableRef[string, Entry])
+  var v = s.fromJsonAs(OrderedTableRef[string, Entry])
   doAssert v.len == 3
   doAssert v["a"].color == "red"
   doAssert v["b"].color == "green"
@@ -65,7 +65,7 @@ block: # issue 52
     "red": 1,
     "blue": 3
   }"""
-  let v = s.fromJson(Table[Color, int])
+  let v = s.fromJsonAs(Table[Color, int])
   doAssert v.len == 2
   doAssert v[Red] == 1
   doAssert v[Blue] == 3
@@ -75,16 +75,16 @@ block: # issue 52
     A, B, C
   let a = {A: "aaaa", B: "bbb"}.toTable
   doAssert $(a.toJson()) == """{"A":"aaaa","B":"bbb"}"""
-  let t = a.toJson().fromJson(Table[Answer, string])
+  let t = a.toJson().fromJsonAs(Table[Answer, string])
   doAssert t == a
 
 block: # non string table:
   var s = toJson(initTable[int, int]())
-  var v = s.fromJson(Table[int, int])
+  var v = s.fromJsonAs(Table[int, int])
   doAssert v.len == 0
 
 block: # roundtrip non string:
   let tab = {1: 10, 2: 20, 3: 30}.toTable
   let js = tab.toJson()
-  let tab2 = js.fromJson(typeof tab)
+  let tab2 = js.fromJsonAs(typeof tab)
   doAssert tab == tab2

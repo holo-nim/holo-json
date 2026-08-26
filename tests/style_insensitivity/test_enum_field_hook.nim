@@ -7,13 +7,13 @@ type Color = enum
   cBlue
   cGreen
 
-doAssert "0".fromJson(Color) == cRed
-doAssert "1".fromJson(Color) == cBlue
-doAssert "2".fromJson(Color) == cGreen
+doAssert Color.fromJson("0") == cRed
+doAssert Color.fromJson("1") == cBlue
+doAssert Color.fromJson("2") == cGreen
 
-doAssert """ "cred" """.fromJson(Color) == cRed
-doAssert """ "c_blue" """.fromJson(Color) == cBlue
-doAssert """ "cGrEeN" """.fromJson(Color) == cGreen
+doAssert Color.fromJson(""" "cred" """) == cRed
+doAssert Color.fromJson(""" "c_blue" """) == cBlue
+doAssert Color.fromJson(""" "cGrEeN" """) == cGreen
 
 # custom:
 
@@ -29,6 +29,6 @@ proc getFieldMappings(T: type Color2, group: static MappingGroup): FieldMappingP
     "c2Green": toFieldMapping "GREEN"
   }
 
-doAssert """ "Red" """.fromJson(Color2) == c2Red
-doAssert """ "BLUE" """.fromJson(Color2) == c2Blue
-doAssert """ "GReen" """.fromJson(Color2) == c2Green
+doAssert Color2.fromJson(""" "Red" """) == c2Red
+doAssert Color2.fromJson(""" "BLUE" """) == c2Blue
+doAssert Color2.fromJson(""" "GReen" """) == c2Green

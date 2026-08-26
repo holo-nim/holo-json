@@ -29,8 +29,8 @@ import std/json
 
 let obj1 = Bar(a: "foo", b: 1, c: 123, d: true, notRenamed: "bar", e: 456)
 let ser = toJson(obj1)
-doAssert ser.fromJson(JsonNode) == %*{"u":456,"x":"foo","y":1,"z":123,"t":true,"not_renamed":"bar"}
-let obj2 = fromJson(ser, Bar)
+doAssert JsonNode.fromJson(ser) == %*{"u":456,"x":"foo","y":1,"z":123,"t":true,"not_renamed":"bar"}
+let obj2 = fromJson(Bar, ser)
 doAssert obj1.a == obj2.a
 doAssert obj1.b == obj2.b
 doAssert obj1.c == obj2.c
@@ -50,6 +50,6 @@ proc getFieldMappings(_: type ObjInner, group: static MappingGroup): FieldMappin
 
 let refObj1 = (ref ObjInner)(a: 123, b: 456, c: 789)
 let refObjJson = toJson(refObj1)
-doAssert refObjJson.fromJson(JsonNode) == %*{"x": 456, "Foo": 789}
-let refObj2 = refObjJson.fromJson(ref ObjInner)
+doAssert JsonNode.fromJson(refObjJson) == %*{"x": 456, "Foo": 789}
+let refObj2 = (ref ObjInner).fromJson(refObjJson)
 doAssert refObj2[] == ObjInner(b: 456)
