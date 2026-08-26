@@ -66,13 +66,13 @@ for i in 0 ..< 10000:
 
   # JsonNode
   try:
-    let node = data.fromJsonAs()
+    let node = data.fromJson()
     doAssert node != nil
   except CatchableError:
     discard
 
   try:
-    let node = data2.fromJsonAs()
+    let node = data2.fromJson()
     doAssert node != nil
   except CatchableError:
     discard

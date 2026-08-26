@@ -12,7 +12,7 @@ block:
   var v = s.fromJsonAs(string)
   doAssert v == "new\nline"
   doAssert v.toJson().fromJsonAs(string) == v
-  doAssert v.toJson().fromJsonAs().toJson().fromJsonAs() == newJString("new\nline")
+  doAssert v.toJson().fromJson().toJson().fromJson() == newJString("new\nline")
 
 block:
   var s = """ "quote\"inside" """

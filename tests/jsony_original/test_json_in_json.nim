@@ -20,10 +20,10 @@ block:
   doAssert $entry.toJson.fromJsonAs(Entry) == """(name: "json-in-json", data: {"random-data":"here","number":123,"number2":123.456,"array":[1,2,3],"active":true,"null":null})"""
 
   let s = """{"name":"json-in-json","data":{"random-data":"here","number":123,"number2":123.456,"array":[1,2,3],"active":true,"null":null}}"""
-  doAssert $s.fromJsonAs() == """{"name":"json-in-json","data":{"random-data":"here","number":123,"number2":123.456,"array":[1,2,3],"active":true,"null":null}}"""
+  doAssert $s.fromJso() == """{"name":"json-in-json","data":{"random-data":"here","number":123,"number2":123.456,"array":[1,2,3],"active":true,"null":null}}"""
 
   let ns = """[123, +123, -123, 123.456, +123.456, -123.456, 123.456E9, +123.456E9, -123.456E9]"""
-  doAssert $ns.fromJsonAs() == """[123,123,-123,123.456,123.456,-123.456,123456000000.0,123456000000.0,-123456000000.0]"""
+  doAssert $ns.fromJson() == """[123,123,-123,123.456,123.456,-123.456,123456000000.0,123456000000.0,-123456000000.0]"""
 
   var foo = Entry()
   doAssert toJson(foo) == """{"name":"","data":null}"""
