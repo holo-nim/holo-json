@@ -439,7 +439,7 @@ proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
               break
           withFirstVariantFieldName(T, onVariantField)
         else:
-          template onVariantField(f) =
+          template onVariantField(f) {.used.} =
             var v2: typeof(v.`f`)
             read(format, reader, v2)
             initObjVariant(v, `f`, v2)

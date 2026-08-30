@@ -331,8 +331,14 @@ proc dumpItems*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, arr: va
     withArrayItem(format, writer, arr):
       format.dump(writer, e)
 
+proc dumpStr(s: string): string =
+  var writer = initJsonWriter()
+  writer.startWrite()
+  dump(JsonDumpFormat(), writer, s)
+  result = writer.finishWrite()
+
 template dumpKey(writer: JsonWriterArg, v: static string) =
-  const v2 = holo_json.toJson(v) & ":"
+  const v2 = dumpStr(v) & ":"
   writer.write v2
 
 proc dumpFields*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, obj: var ObjectDump, v: T) =
