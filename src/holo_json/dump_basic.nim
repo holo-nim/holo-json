@@ -356,7 +356,7 @@ proc dump*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, v: T) =
     dumpItems(format, writer, arr, v)
 
 template dumpStaticStr(writer: JsonWriterArg, s: static string) =
-  const s2 = holo_json.toJson(s)
+  const s2 = dumpStr(s)
   writer.write s2
 
 proc dump*[T: enum](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inline.} =
