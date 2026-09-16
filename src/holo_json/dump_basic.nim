@@ -6,12 +6,12 @@ import std/math # for classify
 
 export JsonWriter, JsonWriterArg, initJsonWriter, startWrite, finishWrite, write
 
-proc dump*(format: JsonDumpFormat, writer: JsonWriterArg, v: string)
-proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]])
-proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, T])
-proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: seq[T])
-proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inline.}
-proc dump*[T: distinct](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inline.}
+proc dump*(format: JsonDumpFormat, writer: JsonWriterArg, v: string) {.gcsafe.}
+proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]]) {.gcsafe.}
+proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, T]) {.gcsafe.}
+proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: seq[T]) {.gcsafe.}
+proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inline, gcsafe.}
+proc dump*[T: distinct](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inline, gcsafe.}
 
 proc dump*[T: distinct](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inline.} =
   mixin dump

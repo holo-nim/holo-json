@@ -5,14 +5,14 @@ import std/[unicode, parseutils, typetraits, importutils, strbasics]
 
 export JsonReader, JsonReaderArg, initJsonReader, startRead
 
-proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T]) {.inline.}
-proc read*[T: enum](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline.}
-proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T)
-proc read*[T: tuple](format: JsonReadFormat, reader: JsonReaderArg, v: var T)
-proc read*[T: array](format: JsonReadFormat, reader: JsonReaderArg, v: var T)
-proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var ref T) {.inline.}
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var string) {.inline.}
-proc read*[T: distinct](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline.}
+proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T]) {.inline, gcsafe.}
+proc read*[T: enum](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline, gcsafe.}
+proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.gcsafe.}
+proc read*[T: tuple](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.gcsafe.}
+proc read*[T: array](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.gcsafe.}
+proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var ref T) {.inline, gcsafe.}
+proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var string) {.inline, gcsafe.}
+proc read*[T: distinct](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline, gcsafe.}
 
 proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var RawJson) {.inline.} =
   reader.lockBuffer()
