@@ -327,7 +327,7 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: JsonReaderArg, obj: var
               break all
           discard skipValue(format, reader)
       else:
-        template onFieldInput(f) =
+        template onFieldInput(f) {.used.} =
           read(format, reader, f)
         const mappings = getActualFieldMappings(T, HoloJson)
         implNormalizer(T)
@@ -444,7 +444,7 @@ proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
             read(format, reader, v2)
             initObjVariant(v, `f`, v2)
             break
-          template onInnerField(f, vf, discrim) =
+          template onInnerField(f, vf, discrim) {.used.} =
             initObjVariant(v, `vf`, `discrim`)
             break
           const mappings = getActualFieldMappings(T, HoloJson)
