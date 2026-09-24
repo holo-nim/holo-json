@@ -137,7 +137,7 @@ Not compatible with jsony's parsing/conversion behavior.
 
 * Instead of working on bare strings, reader and writer types from [fleu](https://github.com/holo-nim/fleu) are used. These keep the lightness of strings and allow loading from/flushing to streams as necessary.
 
-* The existence of the format and reader/writer objects allows for line/column handling and options for different behavior, a potential option is for pretty output but is not implemented yet.
+* The existence of the format and reader/writer objects allows for line/column handling and options for different behavior, including optional indent tracking for the writer which allows pretty mode output.
 
 * Parsing errors and value errors are properly separated. When a value is encountered that is unexpected by the current type, the full raw JSON value will be parsed (skipped) before giving a value error. If that single value cannot be parsed, a parsing error is given. This does not mean that types are not allowed to override the JSON grammar, but error reporting prioritizes valid JSON.
 

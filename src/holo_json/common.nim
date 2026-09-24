@@ -35,6 +35,8 @@ type
     ReplaceInvalidUtf8 ## replaces invalid utf8 with replacement character
     KeepInvalidUtf8 ## keeps invalid utf8 characters as-is
   JsonDumpFormat* = object
+    pretty*: bool
+      ## pretty output, requires indented writer
     keepUtf8*: bool = true
       ## keeps valid utf 8 codepoints in strings as-is instead of encoding an escape sequence
     invalidUtf8*: InvalidUtf8Output = EscapeInvalidUtf8
@@ -43,7 +45,6 @@ type
     rawJsNanInf*: bool
       ## produces raw NaN/Infinity/-Infinity as in js and json5, as opposed to strings as in nim json
     defaultEnumOutput*: EnumOutput
-    # XXX maybe pretty mode
 
 const jsonyHookCompatibility* {.booldefine.} = false
   ## allows compatibility with `renameHook` and `skipHook` which have been replaced with pragmas,
