@@ -384,32 +384,30 @@ proc dumpItems*[T](format: JsonDumpFormat, writer: JsonWriterArg, arr: var Array
 
 proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, T]) =
   mixin dump
-  writer.write '['
-  var needsComma = false
-  for e in v:
-    if needsComma: writer.write ','
-    else: needsComma = true
-    format.dump(writer, e)
-  writer.write ']'
+  var arr: ArrayDump
+  withArrayDump format, writer, arr:
+    for e in v:
+      withArrayItem format, writer, arr:
+        format.dump(writer, e)
 
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: seq[T]) =
   mixin dump
-  writer.write '['
-  for i, e in v:
-    if i != 0:
-      writer.write ','
-    format.dump(writer, e)
-  writer.write ']'
+  var arr: ArrayDump
+  withArrayDump format, writer, arr:
+    for i, e in v:
+      withArrayItem format, writer, arr:
+        #if i != 0: writer.write ','
+        format.dump(writer, e)
 
 proc dumpFields*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, obj: var ObjectDump, v: T) =
   mixin dump
   when jsonyPairsObject and compiles(for k, e in v.pairs: discard):
     # Tables and table like objects.
     for k, e in v.pairs:
-      if obj.needsComma: writer.write ','
-      else: obj.needsComma = true
+      maybeAddComma(format, writer, obj.needsComma)
       format.dump(writer, k)
       writer.write ':'
+      if format.pretty: writer.write ' '
       format.dump(writer, e)
   else:
     # Normal objects.
@@ -421,15 +419,15 @@ proc dumpFields*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, obj: 
           discard
         else:
           # original jsony does not have rename hook here
-          if obj.needsComma: writer.write ','
-          else: obj.needsComma = true
+          maybeAddComma(format, writer, obj.needsComma)
           writer.dumpKey(k)
+          if format.pretty: writer.write ' '
           format.dump(writer, e)
     else:
       template onFieldOutput(f, fName) =
-        if obj.needsComma: writer.write ','
-        else: obj.needsComma = true
+        maybeAddComma(format, writer, obj.needsComma)
         writer.dumpKey(fName)
+        if format.pretty: writer.write ' '
         format.dump(writer, f)
       const mappings = getActualFieldMappings(T, HoloJson)
       # XXX no normalizer support
@@ -447,16 +445,12 @@ proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inl
 
 proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]]) =
   mixin dump
-  writer.write '{'
-  var needsComma = false
-  # Normal objects.
-  for (k, e) in v.items:
-    if needsComma: writer.write ','
-    else: needsComma = true
-    format.dump(writer, k)
-    writer.write ':'
-    format.dump(writer, e)
-  writer.write '}'
+  var obj: ObjectDump
+  withObjectDump(format, writer, obj):
+    # Normal objects.
+    for (k, e) in v.items:
+      withObjectField(format, writer, obj, k):
+        format.dump(writer, e)
 
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: ref T) {.inline.} =
   mixin dump
@@ -481,10 +475,10 @@ proc dumpJson*[T](writer: JsonWriterArg, v: T) {.inline.} =
 proc dumpJson*[T](s: var string, v: T) {.inline.} =
   dump(JsonDumpFormat(), s, v)
 
-proc toJson*[T](v: T): string {.inline.} =
-  dump(JsonDumpFormat(), result, v)
+proc toJson*[T](v: T, format = JsonDumpFormat()): string {.inline.} =
+  dump(format, result, v)
 
-template toStaticJson*(v: untyped): static[string] =
+template toStaticJson*(v: untyped, format = JsonDumpFormat()): static[string] =
   ## This will turn v into json at compile time and return the json string.
-  const s = v.toJson()
+  const s = v.toJson(format)
   s

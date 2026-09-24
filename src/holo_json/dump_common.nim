@@ -1,5 +1,7 @@
 type JsonWriterImplementation* = enum
   JsonFlushWriter = "flush"
+  JsonIndentFlushWriter = "indent-flush"
+    ## tracks indent for optional pretty printing
   JsonGenericWriter = "generic"
 
 when defined(nimHasGenericDefine):
@@ -24,6 +26,24 @@ when impl == JsonFlushWriter:
 
   proc initJsonWriter*(): JsonWriter {.inline.} =
     result = initFlushWriter()
+  
+  template supportsIndent*(writer: JsonWriterArg): bool =
+    ## whether or not the writer supports indent tracking for pretty printing
+    false
+elif impl == JsonIndentFlushWriter:
+  import fleu/flush_writer
+  export flush_writer
+
+  type
+    JsonWriter* = IndentFlushWriter
+    JsonWriterArg* = var JsonWriter
+
+  proc initJsonWriter*(): JsonWriter {.inline.} =
+    result = initIndentFlushWriter()
+  
+  template supportsIndent*(writer: JsonWriterArg): bool =
+    ## whether or not the writer supports indent tracking for pretty printing
+    true
 elif impl == JsonGenericWriter:
   template getArgType*[T](_: typedesc[T]): untyped =
     ## hook to override to turn `T` into an argument type
@@ -38,5 +58,9 @@ elif impl == JsonGenericWriter:
 
   template initJsonWriter*[T](impl: T): JsonWriter[T] =
     impl
+  
+  template supportsIndent*(writer: JsonWriterArg): bool =
+    ## override for writers that support indent tracking
+    false
 else:
   {.error: "unimplemented writer implementation " & $impl.}

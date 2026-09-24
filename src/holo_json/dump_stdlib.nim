@@ -9,29 +9,21 @@ proc dump*(format: JsonDumpFormat, writer: JsonWriterArg, v: JsonNode) =
   else:
     case v.kind:
     of JObject:
-      writer.write '{'
-      var i = 0
-      for k, e in v.pairs:
-        if i != 0:
-          writer.write ","
-        format.dump(writer, k)
-        writer.write ':'
-        format.dump(writer, e)
-        inc i
-      writer.write '}'
+      var obj: ObjectDump
+      withObjectDump(format, writer, obj):
+        for k, e in v.pairs:
+          withObjectField(format, writer, obj, k):
+            format.dump(writer, e)
     of JArray:
-      writer.write '['
-      var i = 0
-      for e in v:
-        if i != 0:
-          writer.write ","
-        format.dump(writer, e)
-        inc i
-      writer.write ']'
+      var arr: ArrayDump
+      withArrayDump(format, writer, arr):
+        for e in v:
+          withArrayItem(format, writer, arr):
+            format.dump(writer, e)
     of JNull:
       writer.write "null"
     of JInt:
-      format.dump(writer, v.getInt)
+      format.dump(writer, v.getBiggestInt)
     of JFloat:
       format.dump(writer, v.getFloat)
     of JString:
