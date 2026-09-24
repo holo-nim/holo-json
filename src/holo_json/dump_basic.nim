@@ -346,7 +346,7 @@ proc dumpFields*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, obj: v
   for k, e in v.fieldPairs:
     maybeAddComma(format, writer, obj.needsComma)
     format.dumpKey(writer, k)
-    if format.pretty: format.write ' '
+    if format.pretty: writer.write ' '
     format.dump(writer, e)
 
 proc dump*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, v: T) =
