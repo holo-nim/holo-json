@@ -2,7 +2,7 @@ import holo_json, std/[math, json]
 
 type
   Foo = object
-    a: int
+    a: int64
     b: float
     c: array[3, string]
     d: seq[Foo]
@@ -10,7 +10,7 @@ type
 let testObj = Foo(a: 123, b: 4.56, c: ["a b c", "def", "g\nh\ni"], d: @[
   Foo(a: -1, b: NaN, c: ["", "\r\n  ", "\n\n\n"], d: @[
     Foo(a: 0, b: 0, c: ["", "", ""], d: @[])]),
-  Foo(a: high(int), b: high(float), c: ["!#$", "'^+", "%&/"])])
+  Foo(a: high(int64), b: high(float), c: ["!#$", "'^+", "%&/"])])
 
 let ser1 = toJson(testObj, JsonDumpFormat(pretty: true))
 doAssert ser1 == """{

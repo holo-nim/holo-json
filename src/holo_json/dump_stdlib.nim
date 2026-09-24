@@ -23,7 +23,7 @@ proc dump*(format: JsonDumpFormat, writer: JsonWriterArg, v: JsonNode) =
     of JNull:
       writer.write "null"
     of JInt:
-      format.dump(writer, v.getInt)
+      format.dump(writer, v.getBiggestInt)
     of JFloat:
       format.dump(writer, v.getFloat)
     of JString:
