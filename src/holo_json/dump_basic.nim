@@ -344,9 +344,9 @@ template dumpKey(writer: JsonWriterArg, v: static string) =
 proc dumpFields*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, obj: var ObjectDump, v: T) =
   mixin dump
   for k, e in v.fieldPairs:
-    if obj.needsComma: writer.write ','
-    else: obj.needsComma = true
+    maybeAddComma(format, writer, obj.needsComma)
     format.dumpKey(writer, k)
+    if format.pretty: format.write ' '
     format.dump(writer, e)
 
 proc dump*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, v: T) =
