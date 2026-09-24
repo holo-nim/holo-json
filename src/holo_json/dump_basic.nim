@@ -449,7 +449,7 @@ proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, tupl
   withObjectDump(format, writer, obj):
     # Normal objects.
     for (k, e) in v.items:
-      withObjectField(format, writer, k):
+      withObjectField(format, writer, obj, k):
         format.dump(writer, e)
 
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: ref T) {.inline.} =
