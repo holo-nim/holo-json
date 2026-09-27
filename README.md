@@ -42,9 +42,9 @@ Not compatible with jsony's parsing/conversion behavior.
       v.add(Header(key: key, value: value))
   proc dump(format: JsonDumpFormat, writer: JsonWriterArg, v: seq[Header]) =
     var obj: ObjectDump
-    format.withObjectDump(writer, obj):
+    obj.dumpTo format, writer:
       for header in v:
-        format.withObjectField(writer, obj, header.key):
+        obj.withField format, writer, header.key:
           dump(format, writer, header.value)
 
   # previous:
