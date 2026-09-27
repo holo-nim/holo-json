@@ -27,28 +27,28 @@ proc startArrayDump*(format: JsonDumpFormat, writer: JsonWriterArg): ArrayDump {
   #    writer.addIndent()
   #  writer.write '\n'
 
-proc finishArrayDump*(format: JsonDumpFormat, writer: JsonWriterArg, arr: var ArrayDump) {.inline.} =
+proc finishArrayDump*(arr: var ArrayDump, format: JsonDumpFormat, writer: JsonWriterArg) {.inline.} =
   if format.pretty and arr.needsComma:
     when supportsIndent(writer):
       writer.removeIndent()
     writer.write '\n'
   writer.write ']'
 
-proc startArrayItem*(format: JsonDumpFormat, writer: JsonWriterArg, arr: var ArrayDump) {.inline.} =
+proc startArrayItem*(arr: var ArrayDump, format: JsonDumpFormat, writer: JsonWriterArg) {.inline.} =
   maybeAddComma(format, writer, arr.needsComma)
 
-proc finishArrayItem*(format: JsonDumpFormat, writer: JsonWriterArg, arr: var ArrayDump) {.inline.} =
+proc finishArrayItem*(arr: var ArrayDump, format: JsonDumpFormat, writer: JsonWriterArg) {.inline.} =
   discard
 
-template withArrayDump*(format: JsonDumpFormat, writer: JsonWriterArg, arr: var ArrayDump, body: typed) =
+template dumpTo*(arr: var ArrayDump, format: JsonDumpFormat, writer: JsonWriterArg, body: typed) =
   arr = startArrayDump(format, writer)
   body
-  finishArrayDump(format, writer, arr)
+  finishArrayDump(arr, format, writer)
 
-template withArrayItem*(format: JsonDumpFormat, writer: JsonWriterArg, arr: var ArrayDump, body: typed) =
-  startArrayItem(format, writer, arr)
+template withItem*(arr: var ArrayDump, format: JsonDumpFormat, writer: JsonWriterArg, body: typed) =
+  startArrayItem(arr, format, writer)
   body
-  finishArrayItem(format, writer, arr)
+  finishArrayItem(arr, format, writer)
 
 proc startObjectDump*(format: JsonDumpFormat, writer: JsonWriterArg): ObjectDump {.inline.} =
   result = ObjectDump(needsComma: false)
@@ -59,14 +59,14 @@ proc startObjectDump*(format: JsonDumpFormat, writer: JsonWriterArg): ObjectDump
   #    writer.addIndent()
   #  writer.write '\n'
 
-proc finishObjectDump*(format: JsonDumpFormat, writer: JsonWriterArg, arr: var ObjectDump) {.inline.} =
+proc finishObjectDump*(arr: var ObjectDump, format: JsonDumpFormat, writer: JsonWriterArg) {.inline.} =
   if format.pretty and arr.needsComma:
     when supportsIndent(writer):
       writer.removeIndent()
     writer.write '\n'
   writer.write '}'
 
-proc startObjectField*[T](format: JsonDumpFormat, writer: JsonWriterArg, arr: var ObjectDump, name: T, raw = false) {.inline.} =
+proc startObjectField*[T](arr: var ObjectDump, format: JsonDumpFormat, writer: JsonWriterArg, name: T, raw = false) {.inline.} =
   mixin dump
   maybeAddComma(format, writer, arr.needsComma)
   if raw:
@@ -76,20 +76,20 @@ proc startObjectField*[T](format: JsonDumpFormat, writer: JsonWriterArg, arr: va
   writer.write ':'
   if format.pretty: writer.write ' '
 
-proc finishObjectField*(format: JsonDumpFormat, writer: JsonWriterArg, arr: var ObjectDump) {.inline.} =
+proc finishObjectField*(arr: var ObjectDump, format: JsonDumpFormat, writer: JsonWriterArg) {.inline.} =
   discard
 
-template withObjectDump*(format: JsonDumpFormat, writer: JsonWriterArg, arr: var ObjectDump, body: typed) =
+template dumpTo*(arr: var ObjectDump, format: JsonDumpFormat, writer: JsonWriterArg, body: typed) =
   arr = startObjectDump(format, writer)
   body
-  finishObjectDump(format, writer, arr)
+  finishObjectDump(arr, format, writer)
 
-template withObjectField*[T](format: JsonDumpFormat, writer: JsonWriterArg, arr: var ObjectDump, name: T, body: typed) =
-  startObjectField(format, writer, arr, name)
+template withField*[T](arr: var ObjectDump, format: JsonDumpFormat, writer: JsonWriterArg, name: T, body: typed) =
+  startObjectField(arr, format, writer, name)
   body
-  finishObjectField(format, writer, arr)
+  finishObjectField(arr, format, writer)
 
-template withRawObjectField*(format: JsonDumpFormat, writer: JsonWriterArg, arr: var ObjectDump, name: string, body: typed) =
-  startObjectField(format, writer, arr, name, raw = true)
+template withRawField*(arr: var ObjectDump, format: JsonDumpFormat, writer: JsonWriterArg, name: string, body: typed) =
+  startObjectField(arr, format, writer, name, raw = true)
   body
-  finishObjectField(format, writer, arr)
+  finishObjectField(arr, format, writer)

@@ -10,15 +10,15 @@ proc dump*(format: JsonDumpFormat, writer: JsonWriterArg, v: JsonNode) =
     case v.kind:
     of JObject:
       var obj: ObjectDump
-      withObjectDump(format, writer, obj):
+      obj.dumpTo format, writer:
         for k, e in v.pairs:
-          withObjectField(format, writer, obj, k):
+          obj.withField format, writer, k:
             format.dump(writer, e)
     of JArray:
       var arr: ArrayDump
-      withArrayDump(format, writer, arr):
+      arr.dumpTo format, writer:
         for e in v:
-          withArrayItem(format, writer, arr):
+          arr.withItem format, writer:
             format.dump(writer, e)
     of JNull:
       writer.write "null"
@@ -41,25 +41,25 @@ proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: Option[T]) {.inl
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: HashSet[T]) =
   mixin dump, items
   var arr: ArrayDump
-  format.withArrayDump(writer, arr):
+  arr.dumpTo format, writer:
     for e in v.items:
-      format.withArrayItem(writer, arr):
+      arr.withItem format, writer:
         format.dump(writer, e)
 
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: OrderedSet[T]) =
   mixin dump, items
   var arr: ArrayDump
-  format.withArrayDump(writer, arr):
+  arr.dumpTo format, writer:
     for e in v.items:
-      format.withArrayItem(writer, arr):
+      arr.withItem format, writer:
         format.dump(writer, e)
 
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: set[T]) =
   mixin dump, items
   var arr: ArrayDump
-  format.withArrayDump(writer, arr):
+  arr.dumpTo format, writer:
     for e in v.items:
-      format.withArrayItem(writer, arr):
+      arr.withItem format, writer:
         format.dump(writer, e)
 
 template stringTableImpl(format, writer, tab, K, V) =
@@ -70,9 +70,9 @@ template stringTableImpl(format, writer, tab, K, V) =
       writer.write "null"
       return
   var obj: ObjectDump
-  format.withObjectDump(writer, obj):
+  obj.dumpTo format, writer:
     for k, v in tab.pairs:
-      format.withObjectField(writer, obj, $k):
+      obj.withField format, writer, $k:
         format.dump writer, v
 
 proc dump*[K: string | enum, V](format: JsonDumpFormat, writer: JsonWriterArg, tab: Table[K, V]) =
@@ -95,14 +95,14 @@ template anyTableImpl(format, writer, tab, K, V) =
       writer.write "null"
       return
   var arr: ArrayDump
-  format.withArrayDump(writer, arr):
+  arr.dumpTo format, writer:
     for k, v in tab.pairs:
-      format.withArrayItem(writer, arr):
+      arr.withItem format, writer:
         var pair: ArrayDump
-        format.withArrayDump(writer, pair):
-          format.withArrayItem(writer, pair):
+        pair.dumpTo format, writer:
+          pair.withItem format, writer:
             format.dump writer, k
-          format.withArrayItem(writer, pair):
+          pair.withItem format, writer:
             format.dump writer, v
 
 proc dump*[K: not (string | enum), V](format: JsonDumpFormat, writer: JsonWriterArg, tab: Table[K, V]) =

@@ -328,7 +328,7 @@ proc dump*(format: JsonDumpFormat, writer: JsonWriterArg, v: char) =
 proc dumpItems*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, arr: var ArrayDump, v: T) =
   mixin dump
   for _, e in v.fieldPairs:
-    withArrayItem(format, writer, arr):
+    arr.withItem format, writer:
       format.dump(writer, e)
 
 proc dumpStr(s: string): string =
@@ -352,7 +352,7 @@ proc dumpFields*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, obj: v
 proc dump*[T: tuple](format: JsonDumpFormat, writer: JsonWriterArg, v: T) =
   # XXX different for named tuple?
   var arr: ArrayDump
-  withArrayDump(format, writer, arr):
+  arr.dumpTo format, writer:
     dumpItems(format, writer, arr, v)
 
 template dumpStaticStr(writer: JsonWriterArg, s: static string) =
@@ -379,23 +379,23 @@ proc dump*[T: enum](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inlin
 proc dumpItems*[T](format: JsonDumpFormat, writer: JsonWriterArg, arr: var ArrayDump, v: openArray[T]) =
   mixin dump
   for i, e in v:
-    withArrayItem(format, writer, arr):
+    arr.withItem format, writer:
       format.dump(writer, e)
 
 proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, T]) =
   mixin dump
   var arr: ArrayDump
-  withArrayDump format, writer, arr:
+  arr.dumpTo format, writer:
     for e in v:
-      withArrayItem format, writer, arr:
+      arr.withItem format, writer:
         format.dump(writer, e)
 
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: seq[T]) =
   mixin dump
   var arr: ArrayDump
-  withArrayDump format, writer, arr:
+  arr.dumpTo format, writer:
     for i, e in v:
-      withArrayItem format, writer, arr:
+      arr.withItem format, writer:
         #if i != 0: writer.write ','
         format.dump(writer, e)
 
@@ -440,16 +440,16 @@ proc dump*[T: object](format: JsonDumpFormat, writer: JsonWriterArg, v: T) {.inl
         writer.write "null"
         return
   var obj: ObjectDump
-  withObjectDump(format, writer, obj):
+  obj.dumpTo format, writer:
     dumpFields(format, writer, obj, v)
 
 proc dump*[N, T](format: JsonDumpFormat, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]]) =
   mixin dump
   var obj: ObjectDump
-  withObjectDump(format, writer, obj):
+  obj.dumpTo format, writer:
     # Normal objects.
     for (k, e) in v.items:
-      withObjectField(format, writer, obj, k):
+      obj.withField format, writer, k:
         format.dump(writer, e)
 
 proc dump*[T](format: JsonDumpFormat, writer: JsonWriterArg, v: ref T) {.inline.} =
