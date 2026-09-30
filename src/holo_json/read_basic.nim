@@ -27,7 +27,7 @@ proc read*(format: JsonRead, reader: JsonReaderArg, v: var RawJsonValue) {.inlin
 
 proc read*(format: JsonRead, reader: JsonReaderArg, v: var bool) {.inline.} =
   ## Will parse boolean true or false.
-  skipSpace(reader)
+  skipSpace(format, reader)
   var c: char
   if not peek(reader, c):
     reader.endError("bool value")
@@ -74,7 +74,7 @@ proc readUnsignedInt*[T](format: JsonRead, reader: JsonReaderArg, _: typedesc[T]
     reader.unexpectedError(format, "number of type " & $T)
 
 template uintImpl(T: typedesc) =
-  skipSpace(reader)
+  skipSpace(format, reader)
   if reader.nextMatch('+'):
     discard
   let v2 = readUnsignedInt(format, reader, T)
@@ -106,7 +106,7 @@ proc read*(format: JsonRead, reader: JsonReaderArg, v: var uint64) {.inline.} =
 
 template intImpl(T: typedesc) =
   #when nimvm: v = type(v)(parseBiggestInt(parseSymbol(reader)))
-  skipSpace(reader)
+  skipSpace(format, reader)
   if reader.nextMatch('+'):
     discard
   if reader.nextMatch('-'):
@@ -149,7 +149,7 @@ proc read*(format: JsonRead, reader: JsonReaderArg, v: var int64) {.inline.} =
 
 proc read*(format: JsonRead, reader: JsonReaderArg, v: var float) =
   ## Will parse floats.
-  skipSpace(reader)
+  skipSpace(format, reader)
   if reader.peekMatch('"'):
     # string, check for nim json nan and inf strings:
     if reader.nextMatch("\"nan\""):
@@ -244,17 +244,17 @@ proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var seq[T]) {.inline.}
 
 proc read*[T: array](format: JsonRead, reader: JsonReaderArg, v: var T) =
   mixin read
-  skipSpace(reader)
+  skipSpace(format, reader)
   expectChar(format, reader, '[')
   var i = 0
   for value in v.mitems:
     inc i
-    skipSpace(reader)
+    skipSpace(format, reader)
     if reader.peekMatch(']'):
       # XXX special parse is just for this error which i added could just remove
       reader.error("expected " & $i & "th element in array of len " & $len(v))
     read(format, reader, value)
-    skipSpace(reader)
+    skipSpace(format, reader)
     if reader.nextMatch(','):
       discard
     elif reader.peekMatch(']'):
@@ -263,11 +263,11 @@ proc read*[T: array](format: JsonRead, reader: JsonReaderArg, v: var T) =
     else:
       # maybe improve error message wasnt in original
       reader.parseError("expected comma")
-  skipChar(reader, ']')
+  skipChar(format, reader, ']')
 
 proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var ref T) {.inline.} =
   mixin read
-  skipSpace(reader)
+  skipSpace(format, reader)
   if reader.nextMatch("null"):
     v = nil # changed from original jsony which did nothing, pretty unambiguous here
     return
@@ -311,12 +311,12 @@ proc parseObjectInner[T](format: JsonRead, reader: JsonReaderArg, obj: var T) {.
   mixin read
   privateAccess(T) # important
   while reader.hasNext():
-    skipSpace(reader)
+    skipSpace(format, reader)
     if reader.peekMatch('}'):
       break
     var key: string
     read(format, reader, key)
-    skipChar(reader, ':')
+    skipChar(format, reader, ':')
     {.cast(uncheckedAssign).}:
       when jsonyHookCompatibility and compiles(renameHook(obj, key)):
         renameHook(obj, key)
@@ -333,7 +333,7 @@ proc parseObjectInner[T](format: JsonRead, reader: JsonReaderArg, obj: var T) {.
         implNormalizer(T)
         mapFieldInput(obj, key, mappings, normalizerImpl, jsonDefaultInputNames, onFieldInput):
           discard skipValue(format, reader)
-    skipSpace(reader)
+    skipSpace(format, reader)
     if reader.nextMatch(','):
       discard
     else:
@@ -343,20 +343,20 @@ proc parseObjectInner[T](format: JsonRead, reader: JsonReaderArg, obj: var T) {.
 
 proc read*[T: tuple](format: JsonRead, reader: JsonReaderArg, v: var T) =
   mixin read
-  skipSpace(reader)
+  skipSpace(format, reader)
   when isNamedTuple(T):
     if reader.nextMatch('{'):
       parseObjectInner(format, reader, v)
-      skipChar(reader, '}')
+      skipChar(format, reader, '}')
       return
   expectChar(format, reader, '[')
   for name, value in v.fieldPairs:
-    skipSpace(reader)
+    skipSpace(format, reader)
     read(format, reader, value)
-    skipSpace(reader)
+    skipSpace(format, reader)
     if reader.nextMatch(','):
       discard
-  skipChar(reader, ']')
+  skipChar(format, reader, ']')
 
 proc readEnumString*[T: enum](format: JsonRead, reader: JsonReaderArg, _: typedesc[T]): T =
   var strV: string
@@ -375,7 +375,7 @@ proc readEnumString*[T: enum](format: JsonRead, reader: JsonReaderArg, _: typede
       reader.error("could not parse enum of type " & $T & " from string: " & $strV)
 
 proc read*[T: enum](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline.} =
-  skipSpace(reader)
+  skipSpace(format, reader)
   if reader.peekMatch('"'):
     v = readEnumString(format, reader, T)
   elif reader.peekMatch({'-', '+', '0'..'9'}):
@@ -409,7 +409,7 @@ proc read*[T: object](format: JsonRead, reader: JsonReaderArg, v: var T) =
   ## Parse an object.
   privateAccess(T) # important
   mixin read
-  skipSpace(reader)
+  skipSpace(format, reader)
   when false: # refs disabled
     when T is ref: # changed from original jsony, which allows object
       # XXX maybe config option? has test
@@ -421,14 +421,14 @@ proc read*[T: object](format: JsonRead, reader: JsonReaderArg, v: var T) =
     initObj(v)
   else:
     # scan for field names belonging to a variant branch, or the variant field itself
-    skipSpace(reader)
+    skipSpace(format, reader)
     reader.lockBuffer()
     var savedState = reader.state # XXX using `let` makes VM not copy here
     try:
       while reader.hasNext():
         var key: string
         read(format, reader, key)
-        skipChar(reader, ':')
+        skipChar(format, reader, ':')
         when jsonyHookCompatibility and compiles(renameHook(v, key)):
           renameHook(v, key)
           template onVariantField(f) =
@@ -455,7 +455,7 @@ proc read*[T: object](format: JsonRead, reader: JsonReaderArg, v: var T) =
         discard skipValue(format, reader)
         if not reader.peekMatch('}'):
           # needs space skipped above?
-          skipChar(reader, ',')
+          skipChar(format, reader, ',')
         else:
           initObj(v)
           break
@@ -463,7 +463,7 @@ proc read*[T: object](format: JsonRead, reader: JsonReaderArg, v: var T) =
       reader.state = savedState
       reader.unlockBuffer()
   parseObjectInner(format, reader, v)
-  skipChar(reader, '}')
+  skipChar(format, reader, '}')
 
 proc read*[T: distinct](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline.} =
   mixin read
@@ -491,7 +491,7 @@ proc fromJson*[T](x: typedesc[T], s: string, format = JsonRead()): T {.inline.} 
   var reader = initJsonReader()
   reader.startRead(s)
   read(format, reader, result)
-  skipSpace(reader)
+  skipSpace(format, reader)
   if reader.hasNext():
     var msg = "Found non-whitespace character after JSON data: "
     msg.addQuoted(reader.peekOrZero())

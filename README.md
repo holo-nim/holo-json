@@ -1,178 +1,203 @@
 # holo-json
 
-JSON library based on the codebase and structure of [jsony](https://github.com/treeform/jsony) by [treeform](https://github.com/treeform), overhauled for better usability in applications. I am not keen on licenses so if I am missing any credit anywhere for forking jsony I am willing to fix it.
+JSON library based on the codebase and structure of [jsony](https://github.com/treeform/jsony) by treeform, overhauled for better usability in applications, while retaining performance ([comparison](https://github.com/holo-nim/holo-json/issues/24)). I am not keen on licenses so if I am missing any credit anywhere for forking jsony I am willing to fix it.
 
-Performance comparison with jsony is [here](https://github.com/holo-nim/holo-json/issues/24). Also still works in JS and compile time, these are tested.
+Library is still unstable but has worked well for a while now.
 
-Not compatible with jsony's parsing/conversion behavior.
+Also works in JS and compile time, these are tested.
 
-## Differences with jsony
+# Description
 
-### Structure
+## Structure
 
-* Instead of using a `string, var int` pair in read hooks, a reader type is used. Similarly a writer type is used instead of `var string` for dumping.
-  
-  On top of these, a "format" argument is added to the beginning (as the subject), which is an object type that contains settings for the inputted/outputted JSON.
-  
-  These may hurt efficiency a bit, but they give structure to the hook overloads and distinguish them by changing the signature rather than giving a unique name. On that note the "Hook" part in names are removed, i.e. `dumpHook` just becomes `dump`.
-  
-  ```nim
-  # old:
-  proc parseHook(s: string, i: var int, obj: Foo) = ...
-  # new:
-  proc read(format: JsonRead, reader: JsonReaderArg, obj: Foo) = ...
-  ```
+For a given type, the following hooks are implemented:
 
-  This might look cluttered, but the goal is also to reduce the number of cases where a custom hook has to be written in the first place, as will be shown below.
+```nim
+proc read(format: JsonRead, reader: JsonReaderArg, result: var Foo) = ...
+proc dump(format: JsonDump, writer: JsonWriterArg, value: Foo) = ...
+```
 
-  Also, the `fromJson` overload now receives the type first instead of the JSON first. `fromJsonAs` keeps the old order.
+The `format` argument is an invariant containing options for the current operation,
+i.e. pretty mode for dumping, checking strings for utf8 for reading, or NaN/Infinity output for both.
+It also serves as a way to namespace the hooks under a nominal type.
 
-* The focus on "parsing" and string manipulation is diminished in general in favor of more abstract "reading" and creation of a document. Helpers are added to make this easier but there might be more room for improvement on this.
+The `reader`/`writer` arguments include the actual input/output buffers and read/write states.
+These use the implementations from the [fleu](https://github.com/holo-nim/fleu) library,
+which allow custom data streams with minimal overhead for the case
+where the buffer is not dynamic (i.e. a direct string).
 
-  ```nim
-  type Header = object
-    key: string
-    value: string
+They also allow for things like line/column tracking or indented output,
+but by default the implementations that allow these are not used, as the chief
+use of this library is serialization, which prefers performance over readability
+(unlike data streaming, these do impact performance since they are checked for every character).
+The implementation can be configured using a compile-time define (see
+[reader](https://holo-nim.github.io/holo-json/docs/read_common.html) and
+[writer](https://holo-nim.github.io/holo-json/docs/dump_common.html) options).
+The same thing could have been achieved with generic readers/writers,
+but I figured this would be too cumbersome.
 
-  # new:
-  proc read(format: JsonRead, reader: JsonReaderArg, v: var seq[Header]) =
-    for key in readObject[string](format, reader):
-      var value: string
-      read(format, reader, value)
-      v.add(Header(key: key, value: value))
-  proc dump(format: JsonDump, writer: JsonWriterArg, v: seq[Header]) =
-    var obj: ObjectDump
-    obj.dumpTo format, writer:
-      for header in v:
-        obj.withField format, writer, header.key:
-          dump(format, writer, header.value)
+The hooks can then be called directly with manually constructed format/reader/writer objects,
+or with the following convenience procs:
 
-  # previous:
-  proc parseHook(s: string, i: var int, v: var seq[Header]) =
-    eatChar(s, i, '{')
-    while i < s.len:
-      eatSpace(s, i)
-      if i < s.len and s[i] == '}':
-        break
-      var key, value: string
-      parseHook(s, i, key)
-      eatChar(s, i, ':')
-      parseHook(s, i, value)
-      v.add(Header(key: key, value: value))
-      eatSpace(s, i)
-      if i < s.len and s[i] == ',':
-        inc i
-      else:
-        break
-    eatChar(s, i, '}')
-  proc dumpHook(s: var string, v: seq[Header]) =
-    s.add '{'
-    for header in v:
-      s.dumpHook(header.key)
-      s.add ':'
-      s.dumpHook(header.value)
-    s.add '}'
-  ```
+```nim
+let s = toJson(Foo(...))
+let foo = Foo.fromJson(s)
+let foo = s.fromJsonAs(Foo)
 
-* Instead of `renameHook` and `skipHook` for objects, options for fields can be given in the form of a pragma, using [cosm](https://github.com/holo-nim/cosm). A hook can be used for the full field mapping as well, but it has to work at compile time. More info on the possible field options are in the [documentation](https://holo-nim.github.io/cosm/docs/fields.html#FieldMapping).
+# with optional format argument:
+let s = toJson(Foo(...), format = JsonDump(...))
+let foo = Foo.fromJson(s, format = JsonRead(...))
+let foo = s.fromJsonAs(Foo, format = JsonRead(...))
+```
 
-  ```nim
-  # previous:
-  type Node = ref object
-    kind: string
+The base read/dump implementations are modularized, you can import one without the other.
+The implementations for stdlib types are also in separate modules so that you can selectively
+not import them and implement them yourself.
 
-  proc renameHook(v: var Node, fieldName: var string) =
-    if fieldName == "type":
-      fieldName = "kind"
+### Differences with jsony
 
-  var node = Node.fromJson("""{"type":"root"}""")
-  doAssert node.kind == "root"
-  
-  # new:
-  type Node = ref object
-    kind {.mapping: "type".}: string
-  # or:
-  type Node = ref object
-    kind: string
-  proc getFieldMappings(T: type Node, group: type): FieldMappingPairs =
-    # note: expected to be complete, can call getDefaultFieldMappings and modify it instead
-    result = @{
-      "kind": toFieldMapping "type"
-    }
+The equivalent hooks in jsony are:
 
-  var node = Node.fromJson("""{"type":"root"}""")
-  doAssert node.kind == "root"
-  ```
+```nim
+proc parseHook(s: string, i: var int, v: var Foo) = ...
+proc dumpHook(s: var string, v: Foo) = ...
+```
 
-  The hook can also be overriden for enums, which replaces `enumHook`.
+There is a small drawback compared to these in that the `string` argument being
+different from the `var int` argument (the read state) saves an extra pointer dereference
+vs. the entire reader being wrapped in a `var`.
+However this is not the case for the `ViewReader` implementation.
+Otherwise I think this compromise is worth it for better structure.
 
-  By knowing the field behavior at compile time we can generate a single `case` statement for reading an object field rather than using the magic `fields` iterator and individually checking the name of each field. This could theoretically improve performance but it might not matter much if the objects are small.
+Also the order of `fromJson` is changed, the old order is used for `fromJsonAs`.
 
-  One potential caveat is that this could make compile times worse but the macro code for this is not particularly complex. The `fields` magic can't be much more efficient anyway.
+## Implementing hooks
 
-* Using the cosm library allows to generalize enough that this library is easier to copy for another data format,
-  and switching between other data formats and this library is easy as well.
-  Even the reader/writer types can be abstracted over thanks to the `format` argument.
+The focus on "parsing" and string manipulation is diminished in general
+in favor of more abstract "reading" and creation of a document.
+Helpers are added to make writing hooks easier.
 
-* Reading/dumping behavior is modularized, you can import one without the other. The default hooks for stdlib types like tables and sets are also moved to their own modules so they can be selectively not imported.
+```nim
+type Header = object
+  key: string
+  value: string
 
-* The runtime object hooks from jsony (adapted `startObjectRead`/`finishObjectRead` as well as compatibility-only `renameHook` and `skipHook`) no longer work when defined for ref objects. Instead they have to be defined on the dereferenced object type, which can be done easily like so:
+proc read(format: JsonRead, reader: JsonReaderArg, result: var seq[Header]) =
+  for key in readObject[string](format, reader):
+    var value: string
+    read(format, reader, value)
+    result.add(Header(key: key, value: value))
+proc dump(format: JsonDump, writer: JsonWriterArg, value: seq[Header]) =
+  var obj: ObjectDump
+  obj.dumpTo format, writer:
+    for header in value:
+      obj.withField format, writer, header.key:
+        dump(format, writer, header.value)
+```
 
-  ```nim
-  type Foo = ref object
-  template derefType[T](_: typedesc[ref T]): typedesc[T] = T
-  proc startObjectRead(format: JsonRead, reader: JsonReaderArg, foo: var derefType(Foo)) = ...
-  ```
+The raw string handling version as in jsony is still possible,
+but requires the user to account for input/output options:
 
-  This is because the `read`/`dump` hooks for objects are no longer defined for ref objects, only normal objects.
-  Ref objects instead go through the normal `ref` hook. This is so that `ref Foo` now works properly if
-  `Foo` is an object with custom hooks. There were other ways to deal with this but the other `ref` hook
-  also needed to exclude any constraints put on the `ref object` hook with `not` to avoid ambiguities.
+<details>
 
-  However the compile time hooks still work when defined on a ref object, i.e. `normalizeField` and `getFieldMappings`.
-  This is because there are wrappers around them that also check for `ref T`, which is not possible with the runtime hooks.
+```nim
+# raw string handling (and ignoring format options), as in jsony:
+import holo_json/[read_common, parser]
+proc read(format: JsonRead, reader: JsonReaderArg, result: var seq[Header]) =
+  expectChar(format, reader, '{')
+  while reader.hasNext():
+    skipSpace(format, reader)
+    if reader.peekMatch('}'):
+      break
+    var key, value: string
+    read(format, reader, key)
+    skipChar(format, reader, ':')
+    read(format, reader, value)
+    result.add(Header(key: key, value: value))
+    skipSpace(format, reader)
+    if reader.nextMatch(','):
+      discard
+    else:
+      break
+  skipChar(format, reader, '}')
+proc dump(format: JsonDump, writer: JsonWriterArg, value: seq[Header]) =
+  writer.write '{'
+  for header in value:
+    dump(format, writer, header.key)
+    writer.write ':'
+    dump(format, writer, header.value)
+  writer.write '}'
+```
 
-### Data handling
+</details>
 
-* Instead of working on bare strings, reader and writer types from [fleu](https://github.com/holo-nim/fleu) are used. These keep the lightness of strings and allow loading from/flushing to streams as necessary.
+In general though, the aim is to reduce the number of cases where a custom hook has to be written.
 
-* The existence of the format and reader/writer objects allows for line/column handling and options for different behavior, including optional indent tracking for the writer which allows pretty mode output.
+## Declarative customization
 
-* Parsing errors and value errors are properly separated. When a value is encountered that is unexpected by the current type, the full raw JSON value will be parsed (skipped) before giving a value error. If that single value cannot be parsed, a parsing error is given. This does not mean that types are not allowed to override the JSON grammar, but error reporting prioritizes valid JSON.
+The main way this is done is through pragmas using the [cosm](https://github.com/holo-nim/cosm) library.
 
-### Data representation
+```nim
+type Node = ref object
+  kind {.mapping: "type".}: string
 
-#### New
+let node = Node.fromJson("""{"type":"root"}""")
+doAssert node.kind == "root"
+```
 
-* Object variants support detecting from inner fields of variant branches without needing the variant field as in original jsony.
+Hooks can also be used to manually provide options (works for enums as well):
 
-  ```nim
-  type
-    FooKind = enum
-      FieldA, FieldB, FieldC
-    Foo = object
-      case kind: FooKind
-      of FieldA: a: int
-      of FieldB: b: string
-      of FieldC: c: float
+```nim
+type Node = ref object
+  kind: string
+proc getFieldMappings(T: type Node, group: type): FieldMappingPairs =
+  # note: expected to be complete, can call getDefaultFieldMappings and modify it instead
+  result = @{
+    "kind": toFieldMapping "type"
+  }
 
-  echo fromJson(Foo, """{"a": 123}""") # (kind: FieldA, a: 123)
-  echo fromJson(Foo, """{"b": "xyz"}""") # (kind: FieldB, b: "xyz")
-  ```
+let node = Node.fromJson("""{"type":"root"}""")
+doAssert node.kind == "root"
+```
 
-  This also helps to initialize variant objects sooner.
+This allows to build information about how to interpret the type at compile time,
+which makes it possible to produce efficient `case` statements for parsing objects.
+This replaces `renameHook`/`skipHook`/`enumHook` from jsony.
 
-* Floats support `NaN`/infinity, by default by using strings as in stdlib json, or optionally with their raw JS equivalents as in JSON5. (Nothing else from JSON5 is supported yet though.)
+## JSON output/syntax
 
-* Enums allow representation as integers instead of strings via a runtime option. Although this can be done with hooks it's nicer to be able to change what's opt in and what's opt out.
+By default, object fields convert to snake case in output,
+and accept either their snake case variants and original names in input.
+It is possible to define a `normalizeField` hook to make fields style insensitive as well.
 
-* `\x` is optionally supported for nicer byte strings (I guess if base64 isn't available).
+Object variant branches can be detected without being provided with the actual variant discriminator field.
 
-#### Breaking
+```nim
+type
+  FooKind = enum
+    FieldA, FieldB, FieldC
+  Foo = object
+    case kind: FooKind
+    of FieldA: a: int
+    of FieldB: b: string
+    of FieldC: c: float
 
-* Object field names convert to snake case by default instead of using the original name, and only accept this snake case version rather than either snake case or the original name. Outputting snake case by default is to make the most common real world use cases more convenient, not reading the original name is to not unnecessarily complicate the generated case statements. The original jsony behavior can be brought back with `-d:jsonyFieldCompatibility`, and this behavior is represented by constants in `common.nim`.
-  * Not the case for enums though.
+echo fromJson(Foo, """{"a": 123}""") # (kind: FieldA, a: 123)
+echo fromJson(Foo, """{"b": "xyz"}""") # (kind: FieldB, b: "xyz")
+```
 
-* Some weird `null` handling is removed: Non-ref objects and strings accepted `null` and interpreted it to mean "empty", as in reading nothing. Now it is allowed only where an explicit `null` value exists (like `nil` or `None`). The old behavior might become a config option but it is hard to justify for specifically objects and strings.
+Floats support `NaN`/infinity, by default by using strings as in stdlib json,
+or optionally with their raw JS equivalents as in JSON5.
 
-* The generalized `pairs` dumper for objects is removed as it causes problems when the key isn't a string, instead there is a manual `string | enum` table implementation in `dump_stdlib` same as the read hook from the original jsony. This behavior can be brought back with `-d:jsonyPairsObject` but is not recommended.
+Enums allow representation as integers instead of strings via a runtime option.
+Although this can be done with hooks it's nicer to be able to change what's opt in and what's opt out.
+
+`\x` is optionally supported for nicer byte strings (I guess if base64 isn't available).
+
+Comments are supported, but with a compile time define, as these also impact performance.
+
+## Misc
+
+Parsing errors and value errors are properly separated. When a value is encountered that is unexpected by the current type, the full raw JSON value will be parsed (skipped) before giving a value error. If that single value cannot be parsed, a parsing error is given. This does not mean that types are not allowed to override the JSON grammar, but error reporting prioritizes valid JSON.
+
+

@@ -23,6 +23,9 @@ const holoJsonCommentSupport* {.booldefine.} = false
 type
   JsonRead* = object
     ## json input format (options)
+    allowComments*: bool
+      ## allows comments, note that `-d:holoJsonCommentSupport` has to be enabled
+      ## as this can impact performance
     handleUtf16*: bool = true
       ## jsony converts utf 16 characters in strings by default apparently so does stdlib json
     forceUtf8Strings*: bool

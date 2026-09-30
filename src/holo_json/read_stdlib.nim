@@ -4,7 +4,7 @@ import ./[common, read_common, read_basic, parser, read_helpers], std/[options, 
 
 proc read*(format: JsonRead, reader: JsonReaderArg, v: var JsonNode) =
   ## Parses a regular json node.
-  skipSpace(reader)
+  skipSpace(format, reader)
   let kind = peekRawKind(format, reader)
   case kind
   of JsonInvalid:
@@ -79,7 +79,7 @@ proc fromJson*(s: string): JsonNode {.inline.} =
 proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var Option[T]) =
   ## Parse an Option.
   mixin read
-  skipSpace(reader)
+  skipSpace(format, reader)
   if reader.nextMatch("null"):
     # v = none(T)?
     return
@@ -96,12 +96,12 @@ template stringTableImpl(format, reader, v, K, V) =
     new(v)
   expectChar(format, reader, '{')
   while reader.hasNext():
-    skipSpace(reader)
+    skipSpace(format, reader)
     if reader.peekMatch('}'):
       break
     var key: K
     read(format, reader, key)
-    skipChar(reader, ':')
+    skipChar(format, reader, ':')
     var element: V
     read(format, reader, element)
     v[key] = element
@@ -109,7 +109,7 @@ template stringTableImpl(format, reader, v, K, V) =
       discard
     else:
       break
-  skipChar(reader, '}')
+  skipChar(format, reader, '}')
 
 proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, v: var Table[K, V]) =
   ## Parse an object.
