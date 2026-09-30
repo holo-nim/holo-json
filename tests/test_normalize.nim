@@ -8,7 +8,7 @@ type
   Bar = ref object of Foo
     e {.mapping: "uUu_Uu".}: int
 
-proc normalizeField*(foo: typedesc[Bar], format: type JsonReadFormat, name: string): string =
+proc normalizeField*(foo: typedesc[Bar], format: type JsonRead, name: string): string =
   normalize(name)
 
 let ser = """{"Abc_d_Ef": "abc", "XyZ": "xyz", "uuuuu": 123}"""

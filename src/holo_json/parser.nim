@@ -71,7 +71,7 @@ type
     kind*: JsonValueKind
     raw*: RawJson
 
-proc peekRawKind*(format: JsonReadFormat, reader: JsonReaderArg): JsonValueKind =
+proc peekRawKind*(format: JsonRead, reader: JsonReaderArg): JsonValueKind =
   ## guesses which kind the next object is, assumes spaces are skipped
   ## not guaranteed to be accurate, all numbers are assumed float
   let start = reader.peekOrZero()
@@ -114,7 +114,7 @@ proc peekRawKind*(format: JsonReadFormat, reader: JsonReaderArg): JsonValueKind 
     msg.addQuoted(start)
     reader.parseError(msg)
 
-proc peekRawKindSkipSpace*(format: JsonReadFormat, reader: JsonReaderArg): JsonValueKind {.inline.} =
+proc peekRawKindSkipSpace*(format: JsonRead, reader: JsonReaderArg): JsonValueKind {.inline.} =
   ## guesses which kind the next object is, skips spaces
   ## not guaranteed to be accurate, all numbers are assumed float
   skipSpace(reader)
@@ -130,7 +130,7 @@ proc skipChar*(reader: JsonReaderArg, c: char) {.inline.} =
   elif c != c2:
     reader.parseError("Expected " & c & " but got " & c2 & " instead.")
 
-proc skipNumber*(format: JsonReadFormat, reader: JsonReaderArg): int =
+proc skipNumber*(format: JsonRead, reader: JsonReaderArg): int =
   ## returns start position in buffer
   result = -1
   let start = reader.bufferPos
@@ -235,7 +235,7 @@ proc parseHexInt*[I](reader: JsonReaderArg, a: array[I, char]): int {.inline.} =
     of 'a'..'f': result = (result shl 4) or (10 + c.int - 'a'.int)
     else: reader.parseError("expected hex char in escape sequence, got " & $c)
 
-proc parseUnicodeEscape*(format: JsonReadFormat, reader: JsonReaderArg): int =
+proc parseUnicodeEscape*(format: JsonRead, reader: JsonReaderArg): int =
   #reader.unsafeNext() # u already skipped
   var hexStr: array[4, char]
   if not reader.peek(hexStr):
@@ -266,7 +266,7 @@ proc parseByteEscape*(reader: JsonReaderArg): byte =
   reader.unsafeNextBy(hexStr.len)
   result = parseHexInt(reader, hexStr).byte
 
-proc parseString*(format: JsonReadFormat, reader: JsonReaderArg, quoteSkipped = false): string =
+proc parseString*(format: JsonRead, reader: JsonReaderArg, quoteSkipped = false): string =
   if not quoteSkipped: skipChar(reader, '"')
 
   const doCopy = holoJsonBatchStringAdd
@@ -347,7 +347,7 @@ proc parseString*(format: JsonReadFormat, reader: JsonReaderArg, quoteSkipped = 
       finishCopy()
   skipChar(reader, '"')
 
-proc skipValue*(format: JsonReadFormat, reader: JsonReaderArg): int =
+proc skipValue*(format: JsonRead, reader: JsonReaderArg): int =
   ## Used to skip values of extra fields, or wrongly typed values for errors.
   ## returns start position in buffer
   result = -1
@@ -406,7 +406,7 @@ proc skipValue*(format: JsonReadFormat, reader: JsonReaderArg): int =
     result = reader.bufferPos + 1
     unsafeNextBy(reader, "-Infinity".len)
 
-proc readRawValue*(format: JsonReadFormat, reader: JsonReaderArg): RawJsonValue =
+proc readRawValue*(format: JsonRead, reader: JsonReaderArg): RawJsonValue =
   reader.lockBuffer()
   try:
     skipSpace(reader)
@@ -416,7 +416,7 @@ proc readRawValue*(format: JsonReadFormat, reader: JsonReaderArg): RawJsonValue 
   finally:
     reader.unlockBuffer()
 
-proc peekRawValueSkipSpace*(format: JsonReadFormat, reader: JsonReaderArg): RawJsonValue =
+proc peekRawValueSkipSpace*(format: JsonRead, reader: JsonReaderArg): RawJsonValue =
   ## reads a full raw json value, relatively inefficient and mostly meant for errors
   var savedState = reader.state # XXX using `let` makes VM not copy here
   reader.lockBuffer()

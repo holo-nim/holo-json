@@ -32,18 +32,18 @@ proc valueErrorMsg(got: RawJsonValue, expected: string): string =
       result.add got.raw.string.toOpenArray(0, jsonUnexpectedValueErrorLength - 1)
       result.add "..."
 
-proc valueError*(reader: JsonReaderArg, format: JsonReadFormat, expected: string) {.inline.} =
+proc valueError*(reader: JsonReaderArg, format: JsonRead, expected: string) {.inline.} =
   let got = peekRawValueSkipSpace(format, reader) # important: this can give parse errors by itself
   reader.error(valueErrorMsg(got, expected))
 
-proc unexpectedError*(reader: JsonReaderArg, format: JsonReadFormat, expected: string) {.inline.} =
+proc unexpectedError*(reader: JsonReaderArg, format: JsonRead, expected: string) {.inline.} =
   var dummy: char
   if not reader.peek(dummy):
     endError(reader, expected)
   else:
     valueError(reader, format, expected)
 
-proc expectChar*(format: JsonReadFormat, reader: JsonReaderArg, c: char) {.inline.} =
+proc expectChar*(format: JsonRead, reader: JsonReaderArg, c: char) {.inline.} =
   ## Will consume space before and then the character `c`.
   ## Will raise a value error if `c` is not found,
   ## and a parse error if the end is reached.
@@ -56,7 +56,7 @@ proc expectChar*(format: JsonReadFormat, reader: JsonReaderArg, c: char) {.inlin
   else:
     reader.unsafeNext()
 
-iterator readObjectFields*[K](format: JsonReadFormat, reader: JsonReaderArg): K =
+iterator readObjectFields*[K](format: JsonRead, reader: JsonReaderArg): K =
   mixin read
   while reader.hasNext():
     skipSpace(reader)
@@ -70,13 +70,13 @@ iterator readObjectFields*[K](format: JsonReadFormat, reader: JsonReaderArg): K 
     if reader.nextMatch(','):
       discard
 
-iterator readObject*[K](format: JsonReadFormat, reader: JsonReaderArg): K =
+iterator readObject*[K](format: JsonRead, reader: JsonReaderArg): K =
   expectChar(format, reader, '{')
   for name in readObjectFields[K](format, reader):
     yield name
   skipChar(reader, '}')
 
-iterator readArrayItems*(format: JsonReadFormat, reader: JsonReaderArg, start = 0): int =
+iterator readArrayItems*(format: JsonRead, reader: JsonReaderArg, start = 0): int =
   var i = start
   while reader.hasNext():
     skipSpace(reader)
@@ -93,7 +93,7 @@ iterator readArrayItems*(format: JsonReadFormat, reader: JsonReaderArg, start = 
       reader.parseError("expected comma")
     inc i
 
-iterator readArray*(format: JsonReadFormat, reader: JsonReaderArg): int =
+iterator readArray*(format: JsonRead, reader: JsonReaderArg): int =
   expectChar(format, reader, '[')
   for i in readArrayItems(format, reader):
     yield i

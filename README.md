@@ -20,7 +20,7 @@ Not compatible with jsony's parsing/conversion behavior.
   # old:
   proc parseHook(s: string, i: var int, obj: Foo) = ...
   # new:
-  proc read(format: JsonReadFormat, reader: JsonReaderArg, obj: Foo) = ...
+  proc read(format: JsonRead, reader: JsonReaderArg, obj: Foo) = ...
   ```
 
   This might look cluttered, but the goal is also to reduce the number of cases where a custom hook has to be written in the first place, as will be shown below.
@@ -35,12 +35,12 @@ Not compatible with jsony's parsing/conversion behavior.
     value: string
 
   # new:
-  proc read(format: JsonReadFormat, reader: JsonReaderArg, v: var seq[Header]) =
+  proc read(format: JsonRead, reader: JsonReaderArg, v: var seq[Header]) =
     for key in readObject[string](format, reader):
       var value: string
       read(format, reader, value)
       v.add(Header(key: key, value: value))
-  proc dump(format: JsonDumpFormat, writer: JsonWriterArg, v: seq[Header]) =
+  proc dump(format: JsonDump, writer: JsonWriterArg, v: seq[Header]) =
     var obj: ObjectDump
     obj.dumpTo format, writer:
       for header in v:
@@ -121,7 +121,7 @@ Not compatible with jsony's parsing/conversion behavior.
   ```nim
   type Foo = ref object
   template derefType[T](_: typedesc[ref T]): typedesc[T] = T
-  proc startObjectRead(format: JsonReadFormat, reader: JsonReaderArg, foo: var derefType(Foo)) = ...
+  proc startObjectRead(format: JsonRead, reader: JsonReaderArg, foo: var derefType(Foo)) = ...
   ```
 
   This is because the `read`/`dump` hooks for objects are no longer defined for ref objects, only normal objects.
