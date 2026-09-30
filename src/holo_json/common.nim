@@ -72,10 +72,14 @@ type
   JsonParseError* = object of JsonError
     ## error for invalid json grammar according to the given format
 
-import cosm/[groups, fields]
-export groups, fields
+import cosm, cosm/common_groups
+export cosm, common_groups.Json
 
-const HoloJson* = MappingGroup(id: "holo-json", parents: @[Json])
+#const HoloJson* = MappingGroup(id: "holo-json", parents: @[Json])
+type HoloJson* = object
+  ## mapping group type for cosm
+template eachParent*(_: type HoloJson, toApply) =
+  toApply Json
 const jsonDefaultInputNames* = 
   if jsonyFieldCompatibility: @[verbatim(), snakeCase()]
   else: @[snakeCase()]

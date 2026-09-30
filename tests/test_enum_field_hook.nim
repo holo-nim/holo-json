@@ -1,4 +1,4 @@
-import holo_json, cosm/fields
+import holo_json
 
 # default:
 
@@ -7,7 +7,7 @@ type Color = enum
   cBlue
   cGreen
 
-proc getFieldMappings(T: type Color, group: static MappingGroup): FieldMappingPairs =
+proc getFieldMappings(T: type Color, group: type): FieldMappingPairs =
   result = @{
     "cRed": FieldMapping(),
     "cBlue": FieldMapping(),
@@ -29,7 +29,7 @@ type Color2 = enum
   c2Blue
   c2Green
 
-proc getFieldMappings(T: type Color2, group: static MappingGroup): FieldMappingPairs =
+proc getFieldMappings(T: type Color2, group: type): FieldMappingPairs =
   result = @{
     "c2Red": toFieldMapping "RED",
     "c2Blue": toFieldMapping "BLUE",

@@ -1,6 +1,6 @@
 ## implements reading behavior for basic types
 
-import ./[common, read_common, parser, read_helpers], cosm/[caseutils, variants]
+import ./[common, read_common, parser, read_helpers], cosm/[caseutils, variants, field_map]
 import std/[unicode, parseutils, typetraits, importutils, strbasics]
 
 export JsonReader, JsonReaderArg, initJsonReader, startRead
