@@ -72,8 +72,8 @@ type
   JsonParseError* = object of JsonError
     ## error for invalid json grammar according to the given format
 
-import cosm/mapping
-export mapping.mapping, mapping.Json
+import cosm, cosm/common_groups
+export cosm, common_groups.Json
 
 #const HoloJson* = MappingGroup(id: "holo-json", parents: @[Json])
 type HoloJson* = object
