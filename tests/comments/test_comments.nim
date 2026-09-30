@@ -5,4 +5,6 @@ let j = """{
   /* multiline
   comment */"c": /*between spaces /*/*nested*/*/*/5/* inline */ ,"d": true
 }"""
-doAssert JsonNode.fromJson(j) == %*{"a": "b", "c": 5, "d": true}
+doAssert JsonNode.fromJson(j, format = JsonRead(allowComments: true)) == %*{"a": "b", "c": 5, "d": true}
+doAssertRaises JsonParseError:
+  discard JsonNode.fromJson(j, format = JsonRead(allowComments: false)) 

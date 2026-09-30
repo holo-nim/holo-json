@@ -2,47 +2,47 @@
 
 import ./[common, read_common, read_basic, parser, read_helpers], std/[options, tables, sets, json, parseutils]
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var JsonNode) =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var JsonNode) =
   ## Parses a regular json node.
-  skipSpace(reader)
+  skipSpace(format, reader)
   let kind = peekRawKind(format, reader)
   case kind
   of JsonInvalid:
     reader.unexpectedError(format, "json value")
   of JsonObject:
-    v = newJObject()
+    value = newJObject()
     for k in readObject[string](format, reader):
       var e: JsonNode
       read(format, reader, e)
-      v[k] = e
+      value[k] = e
   of JsonArray:
-    v = newJArray()
+    value = newJArray()
     for i in readArray(format, reader):
       var e: JsonNode
       read(format, reader, e)
-      v.add(e)
+      value.add(e)
   of JsonString:
     var str: string
     read(format, reader, str)
-    v = newJString(str)
+    value = newJString(str)
   of JsonNull:
     unsafeNextBy(reader, "null".len)
-    v = newJNull()
+    value = newJNull()
   of JsonTrue:
     unsafeNextBy(reader, "true".len)
-    v = newJBool(true)
+    value = newJBool(true)
   of JsonFalse:
     unsafeNextBy(reader, "false".len)
-    v = newJBool(false)
+    value = newJBool(false)
   of JsonRawNan:
     unsafeNextBy(reader, "NaN".len)
-    v = newJFloat(NaN)
+    value = newJFloat(NaN)
   of JsonRawInf:
     unsafeNextBy(reader, "Infinity".len)
-    v = newJFloat(Inf)
+    value = newJFloat(Inf)
   of JsonRawNegInf:
     unsafeNextBy(reader, "-Infinity".len)
-    v = newJFloat(NegInf)
+    value = newJFloat(NegInf)
   of JsonNumber:
     reader.lockBuffer()
     try:
@@ -65,10 +65,10 @@ proc read*(format: JsonRead, reader: JsonReaderArg, v: var JsonNode) =
           else:
             parseutils.parseFloat(reader.currentBuffer.toOpenArray(i, reader.currentBuffer.len - 1), f)
         assert firstPos + chars == reader.bufferPos + 1
-        v = newJFloat(f)
+        value = newJFloat(f)
       else:
         assert firstPos + chars == reader.bufferPos + 1
-        v = newJInt(integer)
+        value = newJInt(integer)
     finally:
       reader.unlockBuffer()
 
@@ -76,52 +76,52 @@ proc fromJson*(s: string): JsonNode {.inline.} =
   ## Takes json parses it into `JsonNode`s.
   result = fromJson(JsonNode, s)
 
-proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var Option[T]) =
+proc read*[T](format: JsonRead, reader: JsonReaderArg, value: var Option[T]) =
   ## Parse an Option.
   mixin read
-  skipSpace(reader)
+  skipSpace(format, reader)
   if reader.nextMatch("null"):
-    # v = none(T)?
+    # value = none(T)?
     return
   var e: T
   read(format, reader, e)
-  v = some(e)
+  value = some(e)
 
-template stringTableImpl(format, reader, v, K, V) =
+template stringTableImpl(format, reader, value, K, V) =
   mixin read
-  when v is ref:
+  when value is ref:
     if reader.nextMatch("null"):
       # this is added this time
       return
-    new(v)
+    new(value)
   expectChar(format, reader, '{')
   while reader.hasNext():
-    skipSpace(reader)
+    skipSpace(format, reader)
     if reader.peekMatch('}'):
       break
     var key: K
     read(format, reader, key)
-    skipChar(reader, ':')
+    skipChar(format, reader, ':')
     var element: V
     read(format, reader, element)
-    v[key] = element
+    value[key] = element
     if reader.nextMatch(','):
       discard
     else:
       break
-  skipChar(reader, '}')
+  skipChar(format, reader, '}')
 
-proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, v: var Table[K, V]) =
+proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, value: var Table[K, V]) =
   ## Parse an object.
-  stringTableImpl(format, reader, v, K, V)
+  stringTableImpl(format, reader, value, K, V)
 
-proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, v: var OrderedTable[K, V]) =
+proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, value: var OrderedTable[K, V]) =
   ## Parse an object.
-  stringTableImpl(format, reader, v, K, V)
+  stringTableImpl(format, reader, value, K, V)
 
-proc read*[K: string | enum](format: JsonRead, reader: JsonReaderArg, v: var CountTable[K]) =
+proc read*[K: string | enum](format: JsonRead, reader: JsonReaderArg, value: var CountTable[K]) =
   ## Parse an object.
-  stringTableImpl(format, reader, v, K, int)
+  stringTableImpl(format, reader, value, K, int)
 
 template anyTableImpl(format, reader, tab, K, V) =
   mixin read
@@ -155,39 +155,39 @@ proc read*[K: not (string | enum)](format: JsonRead, reader: JsonReaderArg, tab:
   anyTableImpl(format, reader, tab, K, int)
 
 when false: # should not need anymore with the `ref object` overload disabled
-  proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, v: var TableRef[K, V]) =
+  proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, value: var TableRef[K, V]) =
     ## Parse an object.
-    tableImpl(format, reader, v, K, V)
+    tableImpl(format, reader, value, K, V)
 
-  proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, v: var OrderedTableRef[K, V]) =
+  proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, value: var OrderedTableRef[K, V]) =
     ## Parse an object.
-    tableImpl(format, reader, v, K, V)
+    tableImpl(format, reader, value, K, V)
 
-  proc read*[K: string | enum](format: JsonRead, reader: JsonReaderArg, v: var CountTableRef[K]) =
+  proc read*[K: string | enum](format: JsonRead, reader: JsonReaderArg, value: var CountTableRef[K]) =
     ## Parse an object.
-    tableImpl(format, reader, v, K, int)
+    tableImpl(format, reader, value, K, int)
 
-proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var HashSet[T]) =
+proc read*[T](format: JsonRead, reader: JsonReaderArg, value: var HashSet[T]) =
   ## Parses `HashSet`.
   mixin read
   for i in readArray(format, reader):
     var e: T
     read(format, reader, e)
-    v.incl(e)
+    value.incl(e)
 
-proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var OrderedSet[T]) =
+proc read*[T](format: JsonRead, reader: JsonReaderArg, value: var OrderedSet[T]) =
   ## Parses `OrderedSet`.
   mixin read
   for i in readArray(format, reader):
     var e: T
     read(format, reader, e)
-    v.incl(e)
+    value.incl(e)
 
-proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var set[T]) =
+proc read*[T](format: JsonRead, reader: JsonReaderArg, value: var set[T]) =
   ## Parses the built-in `set` type.
   # separate overload for bitflags or something
   mixin read
   for i in readArray(format, reader):
     var e: T
     read(format, reader, e)
-    v.incl(e)
+    value.incl(e)

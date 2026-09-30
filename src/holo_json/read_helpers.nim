@@ -47,7 +47,7 @@ proc expectChar*(format: JsonRead, reader: JsonReaderArg, c: char) {.inline.} =
   ## Will consume space before and then the character `c`.
   ## Will raise a value error if `c` is not found,
   ## and a parse error if the end is reached.
-  skipSpace(reader)
+  skipSpace(format, reader)
   var c2: char
   if not reader.peek(c2):
     reader.endError("character ' " & c & "'")
@@ -59,14 +59,14 @@ proc expectChar*(format: JsonRead, reader: JsonReaderArg, c: char) {.inline.} =
 iterator readObjectFields*[K](format: JsonRead, reader: JsonReaderArg): K =
   mixin read
   while reader.hasNext():
-    skipSpace(reader)
+    skipSpace(format, reader)
     if reader.peekMatch('}'):
       break
     var key: K
     read(format, reader, key)
-    skipChar(reader, ':')
+    skipChar(format, reader, ':')
     yield key
-    skipSpace(reader)
+    skipSpace(format, reader)
     if reader.nextMatch(','):
       discard
 
@@ -74,16 +74,16 @@ iterator readObject*[K](format: JsonRead, reader: JsonReaderArg): K =
   expectChar(format, reader, '{')
   for name in readObjectFields[K](format, reader):
     yield name
-  skipChar(reader, '}')
+  skipChar(format, reader, '}')
 
 iterator readArrayItems*(format: JsonRead, reader: JsonReaderArg, start = 0): int =
   var i = start
   while reader.hasNext():
-    skipSpace(reader)
+    skipSpace(format, reader)
     if reader.peekMatch(']'):
       break
     yield i
-    skipSpace(reader)
+    skipSpace(format, reader)
     if reader.nextMatch(','):
       discard
     elif reader.peekMatch(']'):
@@ -97,4 +97,4 @@ iterator readArray*(format: JsonRead, reader: JsonReaderArg): int =
   expectChar(format, reader, '[')
   for i in readArrayItems(format, reader):
     yield i
-  skipChar(reader, ']')
+  skipChar(format, reader, ']')

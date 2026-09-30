@@ -2,63 +2,63 @@
 
 import ./[common, dump_common, dump_basic, dump_helpers], std/[options, sets, tables, json]
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: JsonNode) =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: JsonNode) =
   ## Dumps a regular json node.
-  if v == nil:
+  if value == nil:
     writer.write "null"
   else:
-    case v.kind:
+    case value.kind:
     of JObject:
       var obj: ObjectDump
       obj.dumpTo format, writer:
-        for k, e in v.pairs:
+        for k, e in value.pairs:
           obj.withField format, writer, k:
             format.dump(writer, e)
     of JArray:
       var arr: ArrayDump
       arr.dumpTo format, writer:
-        for e in v:
+        for e in value:
           arr.withItem format, writer:
             format.dump(writer, e)
     of JNull:
       writer.write "null"
     of JInt:
-      format.dump(writer, v.getBiggestInt)
+      format.dump(writer, value.getBiggestInt)
     of JFloat:
-      format.dump(writer, v.getFloat)
+      format.dump(writer, value.getFloat)
     of JString:
-      format.dump(writer, v.getStr)
+      format.dump(writer, value.getStr)
     of JBool:
-      format.dump(writer, v.getBool)
+      format.dump(writer, value.getBool)
 
-proc dump*[T](format: JsonDump, writer: JsonWriterArg, v: Option[T]) {.inline.} =
+proc dump*[T](format: JsonDump, writer: JsonWriterArg, value: Option[T]) {.inline.} =
   mixin dump
-  if v.isNone:
+  if value.isNone:
     writer.write "null"
   else:
-    format.dump(writer, v.get())
+    format.dump(writer, value.get())
 
-proc dump*[T](format: JsonDump, writer: JsonWriterArg, v: HashSet[T]) =
+proc dump*[T](format: JsonDump, writer: JsonWriterArg, value: HashSet[T]) =
   mixin dump, items
   var arr: ArrayDump
   arr.dumpTo format, writer:
-    for e in v.items:
+    for e in value.items:
       arr.withItem format, writer:
         format.dump(writer, e)
 
-proc dump*[T](format: JsonDump, writer: JsonWriterArg, v: OrderedSet[T]) =
+proc dump*[T](format: JsonDump, writer: JsonWriterArg, value: OrderedSet[T]) =
   mixin dump, items
   var arr: ArrayDump
   arr.dumpTo format, writer:
-    for e in v.items:
+    for e in value.items:
       arr.withItem format, writer:
         format.dump(writer, e)
 
-proc dump*[T](format: JsonDump, writer: JsonWriterArg, v: set[T]) =
+proc dump*[T](format: JsonDump, writer: JsonWriterArg, value: set[T]) =
   mixin dump, items
   var arr: ArrayDump
   arr.dumpTo format, writer:
-    for e in v.items:
+    for e in value.items:
       arr.withItem format, writer:
         format.dump(writer, e)
 
@@ -66,7 +66,7 @@ template stringTableImpl(format, writer, tab, K, V) =
   mixin dump, pairs
   # not in original jsony
   when tab is ref:
-    if isNil(v):
+    if isNil(tab):
       writer.write "null"
       return
   var obj: ObjectDump
@@ -91,7 +91,7 @@ template anyTableImpl(format, writer, tab, K, V) =
   mixin dump, pairs
   # not in original jsony
   when tab is ref:
-    if isNil(v):
+    if isNil(tab):
       writer.write "null"
       return
   var arr: ArrayDump

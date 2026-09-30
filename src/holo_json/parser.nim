@@ -33,7 +33,7 @@ proc skipBlockComment*(reader: JsonReaderArg) =
       unsafeNext(reader)
   reader.parseError("expected end of block comment")
 
-proc skipSpace*(reader: JsonReaderArg) {.inline.} =
+proc skipSpace*(format: JsonRead, reader: JsonReaderArg) {.inline.} =
   ## Will consume whitespace.
   ## and comments if `-d:holoJsonCommentSupport` is enabled
   for c in reader.chars():
@@ -41,6 +41,8 @@ proc skipSpace*(reader: JsonReaderArg) {.inline.} =
       case c
       of Whitespace: discard
       of '/':
+        if not format.allowComments:
+          break
         var c2: char = '\0'
         if peek(reader, c2, offset = 1) and c2 == '/':
           unsafeNext(reader)
@@ -117,13 +119,13 @@ proc peekRawKind*(format: JsonRead, reader: JsonReaderArg): JsonValueKind =
 proc peekRawKindSkipSpace*(format: JsonRead, reader: JsonReaderArg): JsonValueKind {.inline.} =
   ## guesses which kind the next object is, skips spaces
   ## not guaranteed to be accurate, all numbers are assumed float
-  skipSpace(reader)
+  skipSpace(format, reader)
   result = peekRawKind(format, reader)
 
-proc skipChar*(reader: JsonReaderArg, c: char) {.inline.} =
+proc skipChar*(format: JsonRead, reader: JsonReaderArg, c: char) {.inline.} =
   ## Will consume space before and then the character `c`.
   ## Will raise a parsing error if `c` is not found.
-  skipSpace(reader)
+  skipSpace(format, reader)
   var c2: char
   if not reader.next(c2):
     reader.parseError("Expected " & c & " but end reached.")
@@ -267,7 +269,7 @@ proc parseByteEscape*(reader: JsonReaderArg): byte =
   result = parseHexInt(reader, hexStr).byte
 
 proc parseString*(format: JsonRead, reader: JsonReaderArg, quoteSkipped = false): string =
-  if not quoteSkipped: skipChar(reader, '"')
+  if not quoteSkipped: skipChar(format, reader, '"')
 
   const doCopy = holoJsonBatchStringAdd
 
@@ -345,13 +347,13 @@ proc parseString*(format: JsonRead, reader: JsonReaderArg, quoteSkipped = false)
   finally:
     when doCopy:
       finishCopy()
-  skipChar(reader, '"')
+  skipChar(format, reader, '"')
 
 proc skipValue*(format: JsonRead, reader: JsonReaderArg): int =
   ## Used to skip values of extra fields, or wrongly typed values for errors.
   ## returns start position in buffer
   result = -1
-  skipSpace(reader)
+  skipSpace(format, reader)
   case peekRawKind(format, reader)
   of JsonInvalid:
     result = -1
@@ -359,28 +361,28 @@ proc skipValue*(format: JsonRead, reader: JsonReaderArg): int =
     unsafeNext(reader)
     result = reader.bufferPos
     while reader.hasNext():
-      skipSpace(reader)
+      skipSpace(format, reader)
       if reader.peekMatch('}'):
         break
       discard skipValue(format, reader)
-      skipChar(reader, ':')
+      skipChar(format, reader, ':')
       discard skipValue(format, reader)
-      skipSpace(reader)
+      skipSpace(format, reader)
       if reader.nextMatch(','):
         discard
-    skipChar(reader, '}')
+    skipChar(format, reader, '}')
   of JsonArray:
     unsafeNext(reader)
     result = reader.bufferPos
     while reader.hasNext():
-      skipSpace(reader)
+      skipSpace(format, reader)
       if reader.peekMatch(']'):
         break
       discard skipValue(format, reader)
-      skipSpace(reader)
+      skipSpace(format, reader)
       if reader.nextMatch(','):
         discard
-    skipChar(reader, ']')
+    skipChar(format, reader, ']')
   of JsonString:
     unsafeNext(reader)
     result = reader.bufferPos
@@ -409,7 +411,7 @@ proc skipValue*(format: JsonRead, reader: JsonReaderArg): int =
 proc readRawValue*(format: JsonRead, reader: JsonReaderArg): RawJsonValue =
   reader.lockBuffer()
   try:
-    skipSpace(reader)
+    skipSpace(format, reader)
     let kind = peekRawKind(format, reader)
     let firstPos = skipValue(format, reader)
     result = RawJsonValue(kind: kind, raw: reader.currentBuffer[firstPos .. reader.bufferPos].RawJson)
@@ -421,7 +423,7 @@ proc peekRawValueSkipSpace*(format: JsonRead, reader: JsonReaderArg): RawJsonVal
   var savedState = reader.state # XXX using `let` makes VM not copy here
   reader.lockBuffer()
   try:
-    skipSpace(reader)
+    skipSpace(format, reader)
     let kind = peekRawKind(format, reader)
     let firstPos = skipValue(format, reader)
     result = RawJsonValue(kind: kind, raw: reader.currentBuffer[firstPos .. reader.bufferPos].RawJson)
