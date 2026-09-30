@@ -5,16 +5,16 @@ import std/[unicode, parseutils, typetraits, importutils, strbasics]
 
 export JsonReader, JsonReaderArg, initJsonReader, startRead
 
-proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T]) {.inline, gcsafe.}
-proc read*[T: enum](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline, gcsafe.}
-proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.gcsafe.}
-proc read*[T: tuple](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.gcsafe.}
-proc read*[T: array](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.gcsafe.}
-proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var ref T) {.inline, gcsafe.}
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var string) {.inline, gcsafe.}
-proc read*[T: distinct](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline, gcsafe.}
+proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var seq[T]) {.inline, gcsafe.}
+proc read*[T: enum](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline, gcsafe.}
+proc read*[T: object](format: JsonRead, reader: JsonReaderArg, v: var T) {.gcsafe.}
+proc read*[T: tuple](format: JsonRead, reader: JsonReaderArg, v: var T) {.gcsafe.}
+proc read*[T: array](format: JsonRead, reader: JsonReaderArg, v: var T) {.gcsafe.}
+proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var ref T) {.inline, gcsafe.}
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var string) {.inline, gcsafe.}
+proc read*[T: distinct](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline, gcsafe.}
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var RawJson) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var RawJson) {.inline.} =
   reader.lockBuffer()
   try:
     let start = skipValue(format, reader)
@@ -22,10 +22,10 @@ proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var RawJson) {.inli
   finally:
     reader.unlockBuffer()
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var RawJsonValue) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var RawJsonValue) {.inline.} =
   v = readRawValue(format, reader)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var bool) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var bool) {.inline.} =
   ## Will parse boolean true or false.
   skipSpace(reader)
   var c: char
@@ -53,7 +53,7 @@ type UintImpl[T] = (
     uint32
 )
 
-proc readUnsignedInt*[T](format: JsonReadFormat, reader: JsonReaderArg, _: typedesc[T]): UintImpl[T] =
+proc readUnsignedInt*[T](format: JsonRead, reader: JsonReaderArg, _: typedesc[T]): UintImpl[T] =
   #when nimvm: v = type(v)(parseBiggestUInt(parseSymbol(reader)))
   result = 0
   var gotChar = false
@@ -84,23 +84,23 @@ template uintImpl(T: typedesc) =
       reader.error("got uint value: " & $v2 & " > max unsigned of " & $T & ": " & $high(T))
   v = T(v2)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var uint) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var uint) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl(uint)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var uint8) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var uint8) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl(uint8)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var uint16) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var uint16) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl(uint16)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var uint32) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var uint32) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl(uint32)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var uint64) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var uint64) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl(uint64)
 
@@ -127,27 +127,27 @@ template intImpl(T: typedesc) =
     else:
       v = T(v2)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var int) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var int) {.inline.} =
   ## Will parse signed integers.
   intImpl(int)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var int8) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var int8) {.inline.} =
   ## Will parse signed integers.
   intImpl(int8)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var int16) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var int16) {.inline.} =
   ## Will parse signed integers.
   intImpl(int16)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var int32) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var int32) {.inline.} =
   ## Will parse signed integers.
   intImpl(int32)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var int64) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var int64) {.inline.} =
   ## Will parse signed integers.
   intImpl(int64)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var float) =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var float) =
   ## Will parse floats.
   skipSpace(reader)
   if reader.peekMatch('"'):
@@ -189,13 +189,13 @@ proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var float) =
   finally:
     reader.unlockBuffer()
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var float32) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var float32) {.inline.} =
   ## Will parse floats.
   var f: float
   read(format, reader, f)
   v = float32(f)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var string) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var string) {.inline.} =
   ## Parse string.
   if false:
     # XXX disabled for now maybe config option
@@ -204,7 +204,7 @@ proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var string) {.inlin
   expectChar(format, reader, '"')
   v = parseString(format, reader, quoteSkipped = true)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var cstring) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var cstring) {.inline.} =
   ## Parse cstring.
   ## 
   ## on native backends, deallocating it is the user's responsibility
@@ -222,14 +222,14 @@ proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var cstring) {.inli
       v = cast[cstring](alloc(s.len))
       copyMem(addr v[0], addr s[0], s.len)
 
-proc read*(format: JsonReadFormat, reader: JsonReaderArg, v: var char) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, v: var char) {.inline.} =
   var str: string
   format.read(reader, str)
   if str.len != 1:
     reader.error("String can't fit into a char.")
   v = str[0]
 
-proc readSeq*[T](format: JsonReadFormat, reader: JsonReaderArg): seq[T] =
+proc readSeq*[T](format: JsonRead, reader: JsonReaderArg): seq[T] =
   ## reads a JSON array as a seq of T
   mixin read
   result = @[]
@@ -238,11 +238,11 @@ proc readSeq*[T](format: JsonReadFormat, reader: JsonReaderArg): seq[T] =
     read(format, reader, element)
     result.add element
 
-proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var seq[T]) {.inline.} =
+proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var seq[T]) {.inline.} =
   ## Parse seq.
   v = readSeq[T](format, reader)
 
-proc read*[T: array](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
+proc read*[T: array](format: JsonRead, reader: JsonReaderArg, v: var T) =
   mixin read
   skipSpace(reader)
   expectChar(format, reader, '[')
@@ -265,7 +265,7 @@ proc read*[T: array](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
       reader.parseError("expected comma")
   skipChar(reader, ']')
 
-proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var ref T) {.inline.} =
+proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var ref T) {.inline.} =
   mixin read
   skipSpace(reader)
   if reader.nextMatch("null"):
@@ -274,7 +274,7 @@ proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var ref T) {.inl
   new(v)
   read(format, reader, v[])
 
-proc finishObjectRead*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline.} =
+proc finishObjectRead*[T](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline.} =
   ## hook called into when an object or named tuple has finished reading all fields
   ##
   ## does not work for ref objects, define it for their deref types,
@@ -283,23 +283,23 @@ proc finishObjectRead*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var 
 
 type HasNormalizer* = concept
   ## implement to normalize field names when reading in json, i.e. for style insensitivity
-  proc normalizeField(_: typedesc[Self], format: type JsonReadFormat, name: string): string
+  proc normalizeField(_: typedesc[Self], format: type JsonRead, name: string): string
 
 when holoJsonObjectStyleInsensitivity:
   from std/strutils import nimIdentNormalize
-  proc normalizeField*[T: object](_: typedesc[T], format: type JsonReadFormat, name: string): string =
+  proc normalizeField*[T: object](_: typedesc[T], format: type JsonRead, name: string): string =
     nimIdentNormalize(name)
 
 when holoJsonEnumStyleInsensitivity:
   when not declared(nimIdentNormalize):
     from std/strutils import nimIdentNormalize
-  proc normalizeField*[T: enum](_: typedesc[T], format: type JsonReadFormat, name: string): string =
+  proc normalizeField*[T: enum](_: typedesc[T], format: type JsonRead, name: string): string =
     nimIdentNormalize(name)
 
 template implNormalizer[T: HasNormalizer](_: typedesc[T]): untyped =
   mixin normalizeField
   template normalizerImpl(s: string): string {.inject.} =
-    normalizeField(`T`, JsonReadFormat, s)
+    normalizeField(`T`, JsonRead, s)
 
 template implNormalizer[T: not HasNormalizer](_: typedesc[T]): untyped =
   when (ref T) is HasNormalizer:
@@ -307,7 +307,7 @@ template implNormalizer[T: not HasNormalizer](_: typedesc[T]): untyped =
   else:
     const normalizerImpl {.inject.} = nil
 
-proc parseObjectInner[T](format: JsonReadFormat, reader: JsonReaderArg, obj: var T) {.inline.} =
+proc parseObjectInner[T](format: JsonRead, reader: JsonReaderArg, obj: var T) {.inline.} =
   mixin read
   privateAccess(T) # important
   while reader.hasNext():
@@ -341,7 +341,7 @@ proc parseObjectInner[T](format: JsonReadFormat, reader: JsonReaderArg, obj: var
   mixin finishObjectRead
   finishObjectRead(format, reader, obj)
 
-proc read*[T: tuple](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
+proc read*[T: tuple](format: JsonRead, reader: JsonReaderArg, v: var T) =
   mixin read
   skipSpace(reader)
   when isNamedTuple(T):
@@ -358,7 +358,7 @@ proc read*[T: tuple](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
       discard
   skipChar(reader, ']')
 
-proc readEnumString*[T: enum](format: JsonReadFormat, reader: JsonReaderArg, _: typedesc[T]): T =
+proc readEnumString*[T: enum](format: JsonRead, reader: JsonReaderArg, _: typedesc[T]): T =
   var strV: string
   read(format, reader, strV)
   when jsonyHookCompatibility and compiles(enumHook(strV, result)):
@@ -374,7 +374,7 @@ proc readEnumString*[T: enum](format: JsonReadFormat, reader: JsonReaderArg, _: 
     mapEnumFieldInput(T, strV, mappings, normalizerImpl, onEnumInput):
       reader.error("could not parse enum of type " & $T & " from string: " & $strV)
 
-proc read*[T: enum](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline.} =
+proc read*[T: enum](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline.} =
   skipSpace(reader)
   if reader.peekMatch('"'):
     v = readEnumString(format, reader, T)
@@ -386,7 +386,7 @@ proc read*[T: enum](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.i
   else:
     reader.unexpectedError(format, "enum value of type " & $T)
 
-proc startObjectRead*[T](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline.} =
+proc startObjectRead*[T](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline.} =
   ## hook called into when an object or named tuple are about to read their fields
   ##
   ## does not work for ref objects, define it for their deref types,
@@ -405,7 +405,7 @@ template initObjVariant[T](v: var T, discrimField, discrimValue) =
   v = T(`discrimField`: `discrimValue`)
   startObjectRead(format, reader, v)
 
-proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
+proc read*[T: object](format: JsonRead, reader: JsonReaderArg, v: var T) =
   ## Parse an object.
   privateAccess(T) # important
   mixin read
@@ -465,27 +465,27 @@ proc read*[T: object](format: JsonReadFormat, reader: JsonReaderArg, v: var T) =
   parseObjectInner(format, reader, v)
   skipChar(reader, '}')
 
-proc read*[T: distinct](format: JsonReadFormat, reader: JsonReaderArg, v: var T) {.inline.} =
+proc read*[T: distinct](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline.} =
   mixin read
   read(format, reader, distinctBase(T)(v))
 
-proc read*[T](format: JsonReadFormat, reader: JsonReaderArg, _: typedesc[T]): T =
+proc read*[T](format: JsonRead, reader: JsonReaderArg, _: typedesc[T]): T =
   mixin read
   read(format, reader, result)
 
 proc readJson*[T](reader: JsonReaderArg, v: var T) {.inline.} =
   mixin read
-  read(JsonReadFormat(), reader, v)
+  read(JsonRead(), reader, v)
 
 proc readJson*[T](reader: JsonReaderArg, _: typedesc[T]): T {.inline.} =
   mixin read
-  read(JsonReadFormat(), reader, result)
+  read(JsonRead(), reader, result)
 
-proc fromJson*[T](x: typedesc[T], s: string, format = JsonReadFormat()): T {.inline.} =
+proc fromJson*[T](x: typedesc[T], s: string, format = JsonRead()): T {.inline.} =
   ## Takes json and outputs the object it represents.
   ## * Extra json fields are ignored.
   ## * Missing json fields keep their default values.
-  ## * `proc startObjectRead(format: JsonReadFormat, reader: JsonReaderArg, foo: var ...)` Can be used to populate default values.
+  ## * `proc startObjectRead(format: JsonRead, reader: JsonReaderArg, foo: var ...)` Can be used to populate default values.
   mixin read
   result = default(T)
   var reader = initJsonReader()
@@ -497,5 +497,5 @@ proc fromJson*[T](x: typedesc[T], s: string, format = JsonReadFormat()): T {.inl
     msg.addQuoted(reader.peekOrZero())
     reader.parseError(msg)
 
-proc fromJsonAs*[T](s: string, x: typedesc[T], format = JsonReadFormat()): T {.inline.} =
+proc fromJsonAs*[T](s: string, x: typedesc[T], format = JsonRead()): T {.inline.} =
   fromJson(T, s, format)

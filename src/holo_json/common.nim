@@ -21,7 +21,8 @@ const holoJsonCommentSupport* {.booldefine.} = false
   ## supports both // and /* */ comments
 
 type
-  JsonReadFormat* = object
+  JsonRead* = object
+    ## json input format (options)
     handleUtf16*: bool = true
       ## jsony converts utf 16 characters in strings by default apparently so does stdlib json
     forceUtf8Strings*: bool
@@ -34,7 +35,8 @@ type
     EscapeInvalidUtf8 ## encodes invalid utf8 in escape sequence
     ReplaceInvalidUtf8 ## replaces invalid utf8 with replacement character
     KeepInvalidUtf8 ## keeps invalid utf8 characters as-is
-  JsonDumpFormat* = object
+  JsonDump* = object
+    ## json output format (options)
     pretty*: bool
       ## pretty output, requires indented writer
     keepUtf8*: bool = true
