@@ -13,7 +13,7 @@ Also works in JS and compile time, these are tested.
 For a given type, the following hooks are implemented:
 
 ```nim
-proc read(format: JsonRead, reader: JsonReaderArg, result: var Foo) = ...
+proc read(format: JsonRead, reader: JsonReaderArg, value: var Foo) = ...
 proc dump(format: JsonDump, writer: JsonWriterArg, value: Foo) = ...
 ```
 
@@ -82,11 +82,11 @@ type Header = object
   key: string
   value: string
 
-proc read(format: JsonRead, reader: JsonReaderArg, result: var seq[Header]) =
-  for key in readObject[string](format, reader):
-    var value: string
-    read(format, reader, value)
-    result.add(Header(key: key, value: value))
+proc read(format: JsonRead, reader: JsonReaderArg, value: var seq[Header]) =
+  for k in readObject[string](format, reader):
+    var v: string
+    read(format, reader, v)
+    value.add(Header(key: k, value: v))
 proc dump(format: JsonDump, writer: JsonWriterArg, value: seq[Header]) =
   var obj: ObjectDump
   obj.dumpTo format, writer:
@@ -103,7 +103,7 @@ but requires the user to account for input/output options:
 ```nim
 # raw string handling (and ignoring format options), as in jsony:
 import holo_json/[read_common, parser]
-proc read(format: JsonRead, reader: JsonReaderArg, result: var seq[Header]) =
+proc read(format: JsonRead, reader: JsonReaderArg, value: var seq[Header]) =
   expectChar(format, reader, '{')
   while reader.hasNext():
     skipSpace(format, reader)
@@ -113,7 +113,7 @@ proc read(format: JsonRead, reader: JsonReaderArg, result: var seq[Header]) =
     read(format, reader, key)
     skipChar(format, reader, ':')
     read(format, reader, value)
-    result.add(Header(key: key, value: value))
+    value.add(Header(key: key, value: value))
     skipSpace(format, reader)
     if reader.nextMatch(','):
       discard

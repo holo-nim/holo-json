@@ -247,13 +247,13 @@ proc read*[T: array](format: JsonRead, reader: JsonReaderArg, value: var T) =
   skipSpace(format, reader)
   expectChar(format, reader, '[')
   var i = 0
-  for value in value.mitems:
+  for item in value.mitems:
     inc i
     skipSpace(format, reader)
     if reader.peekMatch(']'):
       # XXX special parse is just for this error which i added could just remove
       reader.error("expected " & $i & "th element in array of len " & $len(value))
-    read(format, reader, value)
+    read(format, reader, item)
     skipSpace(format, reader)
     if reader.nextMatch(','):
       discard

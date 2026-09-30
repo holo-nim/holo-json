@@ -132,15 +132,15 @@ template anyTableImpl(format, reader, tab, K, V) =
     new(tab)
   for _ in readArray(format, reader):
     var k: K
-    var value: V
+    var v: V
     for pairI in readArray(format, reader):
       if pairI == 0:
         read(format, reader, k)
       elif pairI == 1:
-        read(format, reader, value)
+        read(format, reader, v)
       else:
         reader.error("expected table key/value pair, but extra element found")
-    tab[k] = value
+    tab[k] = v
 
 proc read*[K: not (string | enum), V](format: JsonRead, reader: JsonReaderArg, tab: var Table[K, V]) =
   ## Parse a normal table.

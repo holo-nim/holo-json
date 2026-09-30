@@ -43,16 +43,16 @@ proc dumpNumberFast(writer: JsonWriterArg, value: uint|uint8|uint16|uint32|uint6
     return
   # Max size of a uin64 number is 20 digits.
   var digits: array[20, char]
-  var value = value
+  var v = value
   var p = 0
-  while value != 0:
+  while v != 0:
     # Its faster to look up 2 digits at a time, less int divisions.
-    let idx = value mod 100
+    let idx = v mod 100
     digits[p] = twoDigitLookup[idx*2+1]
     inc p
     digits[p] = twoDigitLookup[idx*2]
     inc p
-    value = value div 100
+    v = v div 100
   var at = writer.currentBuffer.len
   if digits[p-1] == '0':
     dec p
