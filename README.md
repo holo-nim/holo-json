@@ -92,10 +92,10 @@ Not compatible with jsony's parsing/conversion behavior.
   type Node = ref object
     kind {.mapping: "type".}: string
   # or:
-  import cosm/fields
+  import cosm/mapping
   type Node = ref object
     kind: string
-  proc getFieldMappings(T: type Node, group: static MappingGroup): FieldMappingPairs =
+  proc getFieldMappings(T: type Node, group: type): FieldMappingPairs =
     # note: expected to be complete, can call getDefaultFieldMappings and modify it instead
     result = @{
       "kind": toFieldMapping "type"

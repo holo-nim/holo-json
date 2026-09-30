@@ -15,7 +15,7 @@ type
   Bar = ref object of Foo
     e {.mapping: "u".}: int
 
-proc getFieldMappings*(foo: typedesc[Bar], group: static MappingGroup): FieldMappingPairs =
+proc getFieldMappings*(foo: typedesc[Bar], group: type): FieldMappingPairs =
   @{
     "a": toFieldMapping "x",
     "b": toFieldMapping "y",
@@ -41,11 +41,11 @@ doAssert obj1.notRenamed == obj2.notRenamed
 type ObjInner = object
   a, b, c: int
 
-proc getFieldMappings(_: type ObjInner, group: static MappingGroup): FieldMappingPairs =
+proc getFieldMappings(_: type ObjInner, group: type): FieldMappingPairs =
   @{
-    "a": ignore(),
+    "a": toFieldMapping ignore(),
     "b": toFieldMapping "x",
-    "c": FieldMapping(input: InputFieldMapping(ignore: true), output: OutputFieldMapping(name: toName "Foo"))
+    "c": FieldMapping(ignore: IgnoreMapping(input: true), name: NameMapping(output: toName "Foo"))
   }
 
 let refObj1 = (ref ObjInner)(a: 123, b: 456, c: 789)

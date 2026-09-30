@@ -1,7 +1,7 @@
 ## implements dumping behavior for basic types 
 
 # helpers imported mostly for relevant types:
-import ./[common, dump_common, dump_helpers], std/[typetraits, unicode]
+import ./[common, dump_common, dump_helpers], std/[typetraits, unicode], cosm/[mapping, field_map]
 import std/math # for classify
 
 export JsonWriter, JsonWriterArg, initJsonWriter, startWrite, finishWrite, write

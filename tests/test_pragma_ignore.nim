@@ -5,7 +5,7 @@ type
     id: int
   Foo = object
     a: int
-    password {.mapping: OutputFieldMapping(ignore: true).}: string
+    password {.mapping: IgnoreMapping(output: true).}: string
     b: float
     conn {.mapping: ignore().}: Conn
 
