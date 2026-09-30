@@ -6,53 +6,53 @@ import std/math # for classify
 
 export JsonWriter, JsonWriterArg, initJsonWriter, startWrite, finishWrite, write
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: string) {.gcsafe.}
-proc dump*[N, T](format: JsonDump, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]]) {.gcsafe.}
-proc dump*[N, T](format: JsonDump, writer: JsonWriterArg, v: array[N, T]) {.gcsafe.}
-proc dump*[T](format: JsonDump, writer: JsonWriterArg, v: seq[T]) {.gcsafe.}
-proc dump*[T: object](format: JsonDump, writer: JsonWriterArg, v: T) {.inline, gcsafe.}
-proc dump*[T: distinct](format: JsonDump, writer: JsonWriterArg, v: T) {.inline, gcsafe.}
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: string) {.gcsafe.}
+proc dump*[N, T](format: JsonDump, writer: JsonWriterArg, value: array[N, tuple[a: string, b: T]]) {.gcsafe.}
+proc dump*[N, T](format: JsonDump, writer: JsonWriterArg, value: array[N, T]) {.gcsafe.}
+proc dump*[T](format: JsonDump, writer: JsonWriterArg, value: seq[T]) {.gcsafe.}
+proc dump*[T: object](format: JsonDump, writer: JsonWriterArg, value: T) {.inline, gcsafe.}
+proc dump*[T: distinct](format: JsonDump, writer: JsonWriterArg, value: T) {.inline, gcsafe.}
 
-proc dump*[T: distinct](format: JsonDump, writer: JsonWriterArg, v: T) {.inline.} =
+proc dump*[T: distinct](format: JsonDump, writer: JsonWriterArg, value: T) {.inline.} =
   mixin dump
-  format.dump(writer, distinctBase(T)(v))
+  format.dump(writer, distinctBase(T)(value))
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: bool) {.inline.} =
-  if v:
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: bool) {.inline.} =
+  if value:
     writer.write "true"
   else:
     writer.write "false"
 
-const lookup = block:
+proc dumpNumberSlow(writer: JsonWriterArg, value: uint|uint8|uint16|uint32|uint64) {.inline.} =
+  writer.write $value.uint64
+
+const twoDigitLookup = block:
   ## Generate 00, 01, 02 ... 99 pairs.
   var s = ""
   for i in 0 ..< 100:
-    if ($i).len == 1:
+    if i < 10:
       s.add("0")
     s.add($i)
   s
 
-proc dumpNumberSlow(writer: JsonWriterArg, v: uint|uint8|uint16|uint32|uint64) {.inline.} =
-  writer.write $v.uint64
-
-proc dumpNumberFast(writer: JsonWriterArg, v: uint|uint8|uint16|uint32|uint64) =
+proc dumpNumberFast(writer: JsonWriterArg, value: uint|uint8|uint16|uint32|uint64) =
   # Its faster to not allocate a string for a number,
   # but to write it out the digits directly.
-  if v == 0:
+  if value == 0:
     writer.write '0'
     return
   # Max size of a uin64 number is 20 digits.
   var digits: array[20, char]
-  var v = v
+  var value = value
   var p = 0
-  while v != 0:
+  while value != 0:
     # Its faster to look up 2 digits at a time, less int divisions.
-    let idx = v mod 100
-    digits[p] = lookup[idx*2+1]
+    let idx = value mod 100
+    digits[p] = twoDigitLookup[idx*2+1]
     inc p
-    digits[p] = lookup[idx*2]
+    digits[p] = twoDigitLookup[idx*2]
     inc p
-    v = v div 100
+    value = value div 100
   var at = writer.currentBuffer.len
   if digits[p-1] == '0':
     dec p
@@ -67,60 +67,60 @@ proc dumpNumberFast(writer: JsonWriterArg, v: uint|uint8|uint16|uint32|uint64) =
 template uintImpl() =
   when jsonyIntOutput:
     when nimvm:
-      writer.dumpNumberSlow(v)
+      writer.dumpNumberSlow(value)
     else:
       when defined(js):
-        writer.dumpNumberSlow(v)
+        writer.dumpNumberSlow(value)
       else:
-        writer.dumpNumberFast(v)
+        writer.dumpNumberFast(value)
   else:
-    writer.buffer.addInt v
+    writer.buffer.addInt value
     writer.consumeBuffer()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: uint) {.inline.} =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: uint) {.inline.} =
   uintImpl()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: uint8) {.inline.} =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: uint8) {.inline.} =
   uintImpl()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: uint16) {.inline.} =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: uint16) {.inline.} =
   uintImpl()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: uint32) {.inline.} =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: uint32) {.inline.} =
   uintImpl()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: uint64) {.inline.} =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: uint64) {.inline.} =
   uintImpl()
 
 template intImpl() =
   when jsonyIntOutput:
-    if v < 0:
+    if value < 0:
       writer.write '-'
-      dump(format, writer, 0.uint64 - v.uint64)
+      dump(format, writer, 0.uint64 - value.uint64)
     else:
-      dump(format, writer, v.uint64)
+      dump(format, writer, value.uint64)
   else:
-    writer.buffer.addInt v
+    writer.buffer.addInt value
     writer.consumeBuffer()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: int) {.inline.} =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: int) {.inline.} =
   intImpl()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: int8) {.inline.} =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: int8) {.inline.} =
   intImpl()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: int16) {.inline.} =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: int16) {.inline.} =
   intImpl()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: int32) {.inline.} =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: int32) {.inline.} =
   intImpl()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: int64) {.inline.} =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: int64) {.inline.} =
   intImpl()
 
 template floatImpl() =
-  #writer.write $v # original jsony
-  let cls = classify(v)
+  #writer.write $value # original jsony
+  let cls = classify(value)
   case cls
   of fcNan:
     if format.rawJsNanInf:
@@ -141,13 +141,13 @@ template floatImpl() =
       # copy nim json
       writer.write "\"-inf\""
   else:
-    writer.currentBuffer.addFloat(v)
+    writer.currentBuffer.addFloat(value)
     writer.consumeBuffer()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: float) =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: float) =
   floatImpl()
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: float32) =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: float32) =
   floatImpl()
 
 proc validRuneAt(s: string, i: int, rune: var Rune): int =
@@ -208,7 +208,7 @@ template escapeByte(writer: JsonWriterArg, c: char) =
     let chars = ['\\', 'u', '0', '0', hex[c.int shr 4], hex[c.int and 0xF]]
     writer.write chars
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: string) =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: string) =
   writer.write '"'
 
   var i = 0
@@ -231,19 +231,19 @@ proc dump*(format: JsonDump, writer: JsonWriterArg, v: string) =
           writer.currentBuffer.setLen(sLen + numBytes)
           when nimvm:
             for p in 0 ..< numBytes:
-              writer.currentBuffer[sLen + p] = v[copyStart + p]
+              writer.currentBuffer[sLen + p] = value[copyStart + p]
           else:
             when not holoJsonStringCopyMem or defined(js) or defined(nimscript):
               for p in 0 ..< numBytes:
-                writer.currentBuffer[sLen + p] = v[copyStart + p]
+                writer.currentBuffer[sLen + p] = value[copyStart + p]
             else:
-              copyMem(writer.currentBuffer[sLen].addr, v[copyStart].unsafeAddr, numBytes)
+              copyMem(writer.currentBuffer[sLen].addr, value[copyStart].unsafeAddr, numBytes)
           writer.consumeBuffer()
         inCopy = false
 
   try:
-    while i < v.len:
-      let c = v[i]
+    while i < value.len:
+      let c = value[i]
       if (cast[uint8](c) and 0b10000000) == 0:
         # When the high bit is not set this is a single-byte character (ASCII)
         # Does this character need escaping?
@@ -276,7 +276,7 @@ proc dump*(format: JsonDump, writer: JsonWriterArg, v: string) =
         inc i
       else: # Multi-byte characters
         var rune: Rune
-        let r = v.validRuneAt(i, rune)
+        let r = value.validRuneAt(i, rune)
         if r == 0:
           # invalid rune
           case format.invalidUtf8
@@ -298,7 +298,7 @@ proc dump*(format: JsonDump, writer: JsonWriterArg, v: string) =
           when doCopy:
             enterCopy()
           else:
-            writer.write v.toOpenArray(i, i + r - 1)
+            writer.write value.toOpenArray(i, i + r - 1)
           i += r
   finally:
     when doCopy:
@@ -306,10 +306,10 @@ proc dump*(format: JsonDump, writer: JsonWriterArg, v: string) =
 
   writer.write '"'
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: char) =
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: char) =
   writer.write '"'
-  if v < 32.char or v > 127.char or v == '\\' or v == '"':
-    case v
+  if value < 32.char or value > 127.char or value == '\\' or value == '"':
+    case value
     of '\\': writer.write r"\\"
     of '\b': writer.write r"\b"
     of '\f': writer.write r"\f"
@@ -320,14 +320,14 @@ proc dump*(format: JsonDump, writer: JsonWriterArg, v: char) =
       writer.escapeByte('\v')
     of '"': writer.write r"\"""
     else:
-      writer.escapeByte(v)
+      writer.escapeByte(value)
   else:
-    writer.write v
+    writer.write value
   writer.write '"'
 
-proc dumpItems*[T: tuple](format: JsonDump, writer: JsonWriterArg, arr: var ArrayDump, v: T) =
+proc dumpItems*[T: tuple](format: JsonDump, writer: JsonWriterArg, arr: var ArrayDump, value: T) =
   mixin dump
-  for _, e in v.fieldPairs:
+  for _, e in value.fieldPairs:
     arr.withItem format, writer:
       format.dump(writer, e)
 
@@ -337,29 +337,29 @@ proc dumpStr(s: string): string =
   dump(JsonDump(), writer, s)
   result = writer.finishWrite()
 
-template dumpKey(writer: JsonWriterArg, v: static string) =
-  const v2 = dumpStr(v) & ":"
+template dumpKey(writer: JsonWriterArg, value: static string) =
+  const v2 = dumpStr(value) & ":"
   writer.write v2
 
-proc dumpFields*[T: tuple](format: JsonDump, writer: JsonWriterArg, obj: var ObjectDump, v: T) =
+proc dumpFields*[T: tuple](format: JsonDump, writer: JsonWriterArg, obj: var ObjectDump, value: T) =
   mixin dump
-  for k, e in v.fieldPairs:
+  for k, e in value.fieldPairs:
     maybeAddComma(format, writer, obj.needsComma)
     format.dumpKey(writer, k)
     if format.pretty: writer.write ' '
     format.dump(writer, e)
 
-proc dump*[T: tuple](format: JsonDump, writer: JsonWriterArg, v: T) =
+proc dump*[T: tuple](format: JsonDump, writer: JsonWriterArg, value: T) =
   # XXX different for named tuple?
   var arr: ArrayDump
   arr.dumpTo format, writer:
-    dumpItems(format, writer, arr, v)
+    dumpItems(format, writer, arr, value)
 
 template dumpStaticStr(writer: JsonWriterArg, s: static string) =
   const s2 = dumpStr(s)
   writer.write s2
 
-proc dump*[T: enum](format: JsonDump, writer: JsonWriterArg, v: T) {.inline.} =
+proc dump*[T: enum](format: JsonDump, writer: JsonWriterArg, value: T) {.inline.} =
   case format.defaultEnumOutput
   of EnumName:
     template onEnumOutput(s: string) =
@@ -370,40 +370,40 @@ proc dump*[T: enum](format: JsonDump, writer: JsonWriterArg, v: T) {.inline.} =
       const mappings = default(FieldMappingPairs)
     # can always use it here, however will not work with custom `$` XXX
     # XXX no normalizer support
-    mapEnumFieldOutput(T, v, mappings, nil, onEnumOutput)
+    mapEnumFieldOutput(T, value, mappings, nil, onEnumOutput)
     when false:
-      format.dump(writer, $v)
+      format.dump(writer, $value)
   of EnumOrd:
-    format.dump(writer, ord(v))
+    format.dump(writer, ord(value))
 
-proc dumpItems*[T](format: JsonDump, writer: JsonWriterArg, arr: var ArrayDump, v: openArray[T]) =
+proc dumpItems*[T](format: JsonDump, writer: JsonWriterArg, arr: var ArrayDump, value: openArray[T]) =
   mixin dump
-  for i, e in v:
+  for i, e in value:
     arr.withItem format, writer:
       format.dump(writer, e)
 
-proc dump*[N, T](format: JsonDump, writer: JsonWriterArg, v: array[N, T]) =
+proc dump*[N, T](format: JsonDump, writer: JsonWriterArg, value: array[N, T]) =
   mixin dump
   var arr: ArrayDump
   arr.dumpTo format, writer:
-    for e in v:
+    for e in value:
       arr.withItem format, writer:
         format.dump(writer, e)
 
-proc dump*[T](format: JsonDump, writer: JsonWriterArg, v: seq[T]) =
+proc dump*[T](format: JsonDump, writer: JsonWriterArg, value: seq[T]) =
   mixin dump
   var arr: ArrayDump
   arr.dumpTo format, writer:
-    for i, e in v:
+    for i, e in value:
       arr.withItem format, writer:
         #if i != 0: writer.write ','
         format.dump(writer, e)
 
-proc dumpFields*[T: object](format: JsonDump, writer: JsonWriterArg, obj: var ObjectDump, v: T) =
+proc dumpFields*[T: object](format: JsonDump, writer: JsonWriterArg, obj: var ObjectDump, value: T) =
   mixin dump
-  when jsonyPairsObject and compiles(for k, e in v.pairs: discard):
+  when jsonyPairsObject and compiles(for k, e in value.pairs: discard):
     # Tables and table like objects.
-    for k, e in v.pairs:
+    for k, e in value.pairs:
       maybeAddComma(format, writer, obj.needsComma)
       format.dump(writer, k)
       writer.write ':'
@@ -412,10 +412,10 @@ proc dumpFields*[T: object](format: JsonDump, writer: JsonWriterArg, obj: var Ob
   else:
     # Normal objects.
     when jsonyHookCompatibility and (compiles do:
-        for k, e in v.fieldPairs:
-          discard skipHook(type(v), k)):
-      for k, e in v.fieldPairs:
-        when skipHook(type(v), k):
+        for k, e in value.fieldPairs:
+          discard skipHook(type(value), k)):
+      for k, e in value.fieldPairs:
+        when skipHook(type(value), k):
           discard
         else:
           # original jsony does not have rename hook here
@@ -431,54 +431,54 @@ proc dumpFields*[T: object](format: JsonDump, writer: JsonWriterArg, obj: var Ob
         format.dump(writer, f)
       const mappings = getActualFieldMappings(T, HoloJson)
       # XXX no normalizer support
-      mapFieldOutput(v, mappings, nil, jsonDefaultOutputName, onFieldOutput)
+      mapFieldOutput(value, mappings, nil, jsonDefaultOutputName, onFieldOutput)
 
-proc dump*[T: object](format: JsonDump, writer: JsonWriterArg, v: T) {.inline.} =
+proc dump*[T: object](format: JsonDump, writer: JsonWriterArg, value: T) {.inline.} =
   when false: # refs disabled
     when T is ref:
-      if v.isNil:
+      if value.isNil:
         writer.write "null"
         return
   var obj: ObjectDump
   obj.dumpTo format, writer:
-    dumpFields(format, writer, obj, v)
+    dumpFields(format, writer, obj, value)
 
-proc dump*[N, T](format: JsonDump, writer: JsonWriterArg, v: array[N, tuple[a: string, b: T]]) =
+proc dump*[N, T](format: JsonDump, writer: JsonWriterArg, value: array[N, tuple[a: string, b: T]]) =
   mixin dump
   var obj: ObjectDump
   obj.dumpTo format, writer:
     # Normal objects.
-    for (k, e) in v.items:
+    for (k, e) in value.items:
       obj.withField format, writer, k:
         format.dump(writer, e)
 
-proc dump*[T](format: JsonDump, writer: JsonWriterArg, v: ref T) {.inline.} =
+proc dump*[T](format: JsonDump, writer: JsonWriterArg, value: ref T) {.inline.} =
   mixin dump
-  if v == nil:
+  if value == nil:
     writer.write "null"
   else:
-    format.dump(writer, v[])
+    format.dump(writer, value[])
 
-proc dump*(format: JsonDump, writer: JsonWriterArg, v: RawJson) {.inline.} =
-  writer.write v.string
+proc dump*(format: JsonDump, writer: JsonWriterArg, value: RawJson) {.inline.} =
+  writer.write value.string
 
-proc dump*[T](format: JsonDump, s: var string, v: T) {.inline.} =
+proc dump*[T](format: JsonDump, s: var string, value: T) {.inline.} =
   mixin dump
   var writer = initJsonWriter()
   writer.startWrite()
-  dump(format, writer, v)
+  dump(format, writer, value)
   s = writer.finishWrite()
 
-proc dumpJson*[T](writer: JsonWriterArg, v: T) {.inline.} =
-  dump(JsonDump(), writer, v)
+proc dumpJson*[T](writer: JsonWriterArg, value: T) {.inline.} =
+  dump(JsonDump(), writer, value)
 
-proc dumpJson*[T](s: var string, v: T) {.inline.} =
-  dump(JsonDump(), s, v)
+proc dumpJson*[T](s: var string, value: T) {.inline.} =
+  dump(JsonDump(), s, value)
 
-proc toJson*[T](v: T, format = JsonDump()): string {.inline.} =
-  dump(format, result, v)
+proc toJson*[T](value: T, format = JsonDump()): string {.inline.} =
+  dump(format, result, value)
 
-template toStaticJson*(v: untyped, format = JsonDump()): static[string] =
-  ## This will turn v into json at compile time and return the json string.
-  const s = v.toJson(format)
+template toStaticJson*(value: untyped, format = JsonDump()): static[string] =
+  ## This will turn `value` into json at compile time and return the json string.
+  const s = value.toJson(format)
   s

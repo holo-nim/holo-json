@@ -5,27 +5,27 @@ import std/[unicode, parseutils, typetraits, importutils, strbasics]
 
 export JsonReader, JsonReaderArg, initJsonReader, startRead
 
-proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var seq[T]) {.inline, gcsafe.}
-proc read*[T: enum](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline, gcsafe.}
-proc read*[T: object](format: JsonRead, reader: JsonReaderArg, v: var T) {.gcsafe.}
-proc read*[T: tuple](format: JsonRead, reader: JsonReaderArg, v: var T) {.gcsafe.}
-proc read*[T: array](format: JsonRead, reader: JsonReaderArg, v: var T) {.gcsafe.}
-proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var ref T) {.inline, gcsafe.}
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var string) {.inline, gcsafe.}
-proc read*[T: distinct](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline, gcsafe.}
+proc read*[T](format: JsonRead, reader: JsonReaderArg, value: var seq[T]) {.inline, gcsafe.}
+proc read*[T: enum](format: JsonRead, reader: JsonReaderArg, value: var T) {.inline, gcsafe.}
+proc read*[T: object](format: JsonRead, reader: JsonReaderArg, value: var T) {.gcsafe.}
+proc read*[T: tuple](format: JsonRead, reader: JsonReaderArg, value: var T) {.gcsafe.}
+proc read*[T: array](format: JsonRead, reader: JsonReaderArg, value: var T) {.gcsafe.}
+proc read*[T](format: JsonRead, reader: JsonReaderArg, value: var ref T) {.inline, gcsafe.}
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var string) {.inline, gcsafe.}
+proc read*[T: distinct](format: JsonRead, reader: JsonReaderArg, value: var T) {.inline, gcsafe.}
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var RawJson) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var RawJson) {.inline.} =
   reader.lockBuffer()
   try:
     let start = skipValue(format, reader)
-    v = reader.currentBuffer[start .. reader.bufferPos].RawJson
+    value = reader.currentBuffer[start .. reader.bufferPos].RawJson
   finally:
     reader.unlockBuffer()
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var RawJsonValue) {.inline.} =
-  v = readRawValue(format, reader)
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var RawJsonValue) {.inline.} =
+  value = readRawValue(format, reader)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var bool) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var bool) {.inline.} =
   ## Will parse boolean true or false.
   skipSpace(format, reader)
   var c: char
@@ -34,12 +34,12 @@ proc read*(format: JsonRead, reader: JsonReaderArg, v: var bool) {.inline.} =
   case c
   of 'f':
     if reader.nextMatch("false"):
-      v = false
+      value = false
     else:
       reader.valueError(format, "false")
   of 't':
     if reader.nextMatch("true"):
-      v = true
+      value = true
     else:
       reader.valueError(format, "true")
   else:
@@ -54,7 +54,7 @@ type UintImpl[T] = (
 )
 
 proc readUnsignedInt*[T](format: JsonRead, reader: JsonReaderArg, _: typedesc[T]): UintImpl[T] =
-  #when nimvm: v = type(v)(parseBiggestUInt(parseSymbol(reader)))
+  #when nimvm: value = type(value)(parseBiggestUInt(parseSymbol(reader)))
   result = 0
   var gotChar = false
   for c in reader.chars():
@@ -63,11 +63,11 @@ proc readUnsignedInt*[T](format: JsonRead, reader: JsonReaderArg, _: typedesc[T]
       gotChar = true
       # XXX handle overflow
       #let prev = v2
-      #if prev >= (high(typeof(v)) div 10 - digit):
-      #  reader.error("uint overflow: got " & $prev & $c & "... > " & $high(typeof(v)))
+      #if prev >= (high(typeof(value)) div 10 - digit):
+      #  reader.error("uint overflow: got " & $prev & $c & "... > " & $high(typeof(value)))
       result = result * 10 + (typeof(result)(c) - typeof(result)('0'))
       #if v2 < prev:
-      #  reader.error("uint overflow: got " & $prev & $c & "... > " & $high(typeof(v)))
+      #  reader.error("uint overflow: got " & $prev & $c & "... > " & $high(typeof(value)))
     else:
       break
   if not gotChar:
@@ -82,30 +82,30 @@ template uintImpl(T: typedesc) =
     type Impl = UintImpl[T]
     if v2 > Impl(high(T)):
       reader.error("got uint value: " & $v2 & " > max unsigned of " & $T & ": " & $high(T))
-  v = T(v2)
+  value = T(v2)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var uint) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var uint) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl(uint)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var uint8) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var uint8) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl(uint8)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var uint16) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var uint16) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl(uint16)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var uint32) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var uint32) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl(uint32)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var uint64) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var uint64) {.inline.} =
   ## Will parse unsigned integers.
   uintImpl(uint64)
 
 template intImpl(T: typedesc) =
-  #when nimvm: v = type(v)(parseBiggestInt(parseSymbol(reader)))
+  #when nimvm: value = type(value)(parseBiggestInt(parseSymbol(reader)))
   skipSpace(format, reader)
   if reader.nextMatch('+'):
     discard
@@ -114,62 +114,62 @@ template intImpl(T: typedesc) =
     type Impl = UintImpl[T]
     if v2 > Impl(high(T)):
       if v2 == Impl(high(T)) + 1:
-        v = low(T)
+        value = low(T)
       else:
         reader.error("got int value: -" & $v2 & " > min of " & $T & ": -" & $high(T))
     else:
-      v = -T(v2)
+      value = -T(v2)
   else:
     let v2 = readUnsignedInt(format, reader, T)
     type Impl = UintImpl[T]
     if v2 > Impl(high(T)):
       reader.error("got int value: " & $v2 & " < max of " & $T & ": " & $high(T))
     else:
-      v = T(v2)
+      value = T(v2)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var int) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var int) {.inline.} =
   ## Will parse signed integers.
   intImpl(int)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var int8) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var int8) {.inline.} =
   ## Will parse signed integers.
   intImpl(int8)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var int16) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var int16) {.inline.} =
   ## Will parse signed integers.
   intImpl(int16)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var int32) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var int32) {.inline.} =
   ## Will parse signed integers.
   intImpl(int32)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var int64) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var int64) {.inline.} =
   ## Will parse signed integers.
   intImpl(int64)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var float) =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var float) =
   ## Will parse floats.
   skipSpace(format, reader)
   if reader.peekMatch('"'):
     # string, check for nim json nan and inf strings:
     if reader.nextMatch("\"nan\""):
-      v = NaN
+      value = NaN
     elif reader.nextMatch("\"inf\""):
-      v = Inf
+      value = Inf
     elif reader.nextMatch("\"-inf\""):
-      v = NegInf
+      value = NegInf
     else:
       reader.unexpectedError(format, "float string")
     return
   if format.rawJsNanInf:
     if reader.nextMatch("NaN"):
-      v = NaN
+      value = NaN
       return
     elif reader.nextMatch("Infinity"):
-      v = Inf
+      value = Inf
       return
     elif reader.nextMatch("-Infinity"):
-      v = NegInf
+      value = NegInf
       return
   # build float string based on acceptable characters:
   reader.lockBuffer()
@@ -185,49 +185,49 @@ proc read*(format: JsonRead, reader: JsonReaderArg, v: var float) =
       else:
         parseutils.parseFloat(reader.currentBuffer.toOpenArray(i, reader.currentBuffer.len - 1), f)
     assert firstPos + chars == reader.bufferPos + 1
-    v = f
+    value = f
   finally:
     reader.unlockBuffer()
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var float32) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var float32) {.inline.} =
   ## Will parse floats.
   var f: float
   read(format, reader, f)
-  v = float32(f)
+  value = float32(f)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var string) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var string) {.inline.} =
   ## Parse string.
   if false:
     # XXX disabled for now maybe config option
     if reader.nextMatch("null"):
       return
   expectChar(format, reader, '"')
-  v = parseString(format, reader, quoteSkipped = true)
+  value = parseString(format, reader, quoteSkipped = true)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var cstring) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var cstring) {.inline.} =
   ## Parse cstring.
   ## 
   ## on native backends, deallocating it is the user's responsibility
   if reader.nextMatch("null"):
-    v = nil
+    value = nil
     return
   expectChar(format, reader, '"')
   var s = parseString(format, reader, quoteSkipped = true)
   when nimvm:
-    v = cstring(s)
+    value = cstring(s)
   else:
     when defined(nimscript) or defined(js):
-      v = cstring(s)
+      value = cstring(s)
     else:
-      v = cast[cstring](alloc(s.len))
-      copyMem(addr v[0], addr s[0], s.len)
+      value = cast[cstring](alloc(s.len))
+      copyMem(addr value[0], addr s[0], s.len)
 
-proc read*(format: JsonRead, reader: JsonReaderArg, v: var char) {.inline.} =
+proc read*(format: JsonRead, reader: JsonReaderArg, value: var char) {.inline.} =
   var str: string
   format.read(reader, str)
   if str.len != 1:
     reader.error("String can't fit into a char.")
-  v = str[0]
+  value = str[0]
 
 proc readSeq*[T](format: JsonRead, reader: JsonReaderArg): seq[T] =
   ## reads a JSON array as a seq of T
@@ -238,21 +238,21 @@ proc readSeq*[T](format: JsonRead, reader: JsonReaderArg): seq[T] =
     read(format, reader, element)
     result.add element
 
-proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var seq[T]) {.inline.} =
+proc read*[T](format: JsonRead, reader: JsonReaderArg, value: var seq[T]) {.inline.} =
   ## Parse seq.
-  v = readSeq[T](format, reader)
+  value = readSeq[T](format, reader)
 
-proc read*[T: array](format: JsonRead, reader: JsonReaderArg, v: var T) =
+proc read*[T: array](format: JsonRead, reader: JsonReaderArg, value: var T) =
   mixin read
   skipSpace(format, reader)
   expectChar(format, reader, '[')
   var i = 0
-  for value in v.mitems:
+  for value in value.mitems:
     inc i
     skipSpace(format, reader)
     if reader.peekMatch(']'):
       # XXX special parse is just for this error which i added could just remove
-      reader.error("expected " & $i & "th element in array of len " & $len(v))
+      reader.error("expected " & $i & "th element in array of len " & $len(value))
     read(format, reader, value)
     skipSpace(format, reader)
     if reader.nextMatch(','):
@@ -265,16 +265,16 @@ proc read*[T: array](format: JsonRead, reader: JsonReaderArg, v: var T) =
       reader.parseError("expected comma")
   skipChar(format, reader, ']')
 
-proc read*[T](format: JsonRead, reader: JsonReaderArg, v: var ref T) {.inline.} =
+proc read*[T](format: JsonRead, reader: JsonReaderArg, value: var ref T) {.inline.} =
   mixin read
   skipSpace(format, reader)
   if reader.nextMatch("null"):
-    v = nil # changed from original jsony which did nothing, pretty unambiguous here
+    value = nil # changed from original jsony which did nothing, pretty unambiguous here
     return
-  new(v)
-  read(format, reader, v[])
+  new(value)
+  read(format, reader, value[])
 
-proc finishObjectRead*[T](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline.} =
+proc finishObjectRead*[T](format: JsonRead, reader: JsonReaderArg, value: var T) {.inline.} =
   ## hook called into when an object or named tuple has finished reading all fields
   ##
   ## does not work for ref objects, define it for their deref types,
@@ -309,7 +309,7 @@ template implNormalizer[T: not HasNormalizer](_: typedesc[T]): untyped =
 
 proc parseObjectInner[T](format: JsonRead, reader: JsonReaderArg, obj: var T) {.inline.} =
   mixin read
-  privateAccess(T) # important
+  privateAccess(T) # XXX https://github.com/holo-nim/cosm/issues/8
   while reader.hasNext():
     skipSpace(format, reader)
     if reader.peekMatch('}'):
@@ -321,9 +321,9 @@ proc parseObjectInner[T](format: JsonRead, reader: JsonReaderArg, obj: var T) {.
       when jsonyHookCompatibility and compiles(renameHook(obj, key)):
         renameHook(obj, key)
         block all:
-          for k, v in fieldPairs(when obj is ref: obj[] else: obj):
+          for k, value in fieldPairs(when obj is ref: obj[] else: obj):
             if k == key or static(toSnakeCase(k)) == key:
-              read(format, reader, v)
+              read(format, reader, value)
               break all
           discard skipValue(format, reader)
       else:
@@ -341,16 +341,16 @@ proc parseObjectInner[T](format: JsonRead, reader: JsonReaderArg, obj: var T) {.
   mixin finishObjectRead
   finishObjectRead(format, reader, obj)
 
-proc read*[T: tuple](format: JsonRead, reader: JsonReaderArg, v: var T) =
+proc read*[T: tuple](format: JsonRead, reader: JsonReaderArg, value: var T) =
   mixin read
   skipSpace(format, reader)
   when isNamedTuple(T):
     if reader.nextMatch('{'):
-      parseObjectInner(format, reader, v)
+      parseObjectInner(format, reader, value)
       skipChar(format, reader, '}')
       return
   expectChar(format, reader, '[')
-  for name, value in v.fieldPairs:
+  for name, value in value.fieldPairs:
     skipSpace(format, reader)
     read(format, reader, value)
     skipSpace(format, reader)
@@ -374,51 +374,54 @@ proc readEnumString*[T: enum](format: JsonRead, reader: JsonReaderArg, _: typede
     mapEnumFieldInput(T, strV, mappings, normalizerImpl, onEnumInput):
       reader.error("could not parse enum of type " & $T & " from string: " & $strV)
 
-proc read*[T: enum](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline.} =
+proc read*[T: enum](format: JsonRead, reader: JsonReaderArg, value: var T) {.inline.} =
   skipSpace(format, reader)
   if reader.peekMatch('"'):
-    v = readEnumString(format, reader, T)
+    value = readEnumString(format, reader, T)
   elif reader.peekMatch({'-', '+', '0'..'9'}):
     # XXX custom low/high using readUnsignedInt?
     var integer: int
     read(format, reader, integer)
-    v = T(integer) # XXX maybe case statement here #17
+    value = T(integer) # XXX maybe case statement here #17
   else:
     reader.unexpectedError(format, "enum value of type " & $T)
 
-proc startObjectRead*[T](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline.} =
+proc startObjectRead*[T](format: JsonRead, reader: JsonReaderArg, value: var T) {.inline.} =
   ## hook called into when an object or named tuple are about to read their fields
   ##
   ## does not work for ref objects, define it for their deref types,
   ## see `derefType` in `test_objects` for an easy way to do this
   discard
 
-template initObj[T](v: var T) =
+template initObj[T](value: var T) =
   mixin startObjectRead
   when false: # refs disabled
-    when v is ref:
-      new(v)
-  startObjectRead(format, reader, v)
+    when value is ref:
+      new(value)
+  startObjectRead(format, reader, value)
 
-template initObjVariant[T](v: var T, discrimField, discrimValue) =
+template initObjVariant[T](value: var T, discrimField, discrimValue) =
   mixin startObjectRead
-  v = T(`discrimField`: `discrimValue`)
-  startObjectRead(format, reader, v)
+  value = T(`discrimField`: `discrimValue`)
+  startObjectRead(format, reader, value)
 
-proc read*[T: object](format: JsonRead, reader: JsonReaderArg, v: var T) =
-  ## Parse an object.
-  privateAccess(T) # important
+proc read*[T: object](format: JsonRead, reader: JsonReaderArg, value: var T) =
+  ## Takes json and outputs the object it represents.
+  ## * Extra json fields are ignored.
+  ## * Missing json fields keep their default values.
+  ## * `proc startObjectRead(format: JsonRead, reader: JsonReaderArg, foo: var ...)` can be used to populate default values.
+  privateAccess(T) # XXX https://github.com/holo-nim/cosm/issues/8
   mixin read
   skipSpace(format, reader)
   when false: # refs disabled
     when T is ref: # changed from original jsony, which allows object
       # XXX maybe config option? has test
       if reader.nextMatch("null"):
-        v = nil # changed from original jsony, where it does nothing
+        value = nil # changed from original jsony, where it does nothing
         return
   expectChar(format, reader, '{')
   when not hasVariants(T):
-    initObj(v)
+    initObj(value)
   else:
     # scan for field names belonging to a variant branch, or the variant field itself
     skipSpace(format, reader)
@@ -429,23 +432,23 @@ proc read*[T: object](format: JsonRead, reader: JsonReaderArg, v: var T) =
         var key: string
         read(format, reader, key)
         skipChar(format, reader, ':')
-        when jsonyHookCompatibility and compiles(renameHook(v, key)):
-          renameHook(v, key)
+        when jsonyHookCompatibility and compiles(renameHook(value, key)):
+          renameHook(value, key)
           template onVariantField(f) =
             if key == astToStr(f):
-              var discrimValue: typeof(v.`f`)
+              var discrimValue: typeof(value.`f`)
               read(format, reader, discrimValue)
-              initObjVariant(v, `f`, discrimValue)
+              initObjVariant(value, `f`, discrimValue)
               break
           withFirstVariantFieldName(T, onVariantField)
         else:
           template onVariantField(f) {.used.} =
-            var v2: typeof(v.`f`)
+            var v2: typeof(value.`f`)
             read(format, reader, v2)
-            initObjVariant(v, `f`, v2)
+            initObjVariant(value, `f`, v2)
             break
           template onInnerField(f, vf, discrim) {.used.} =
-            initObjVariant(v, `vf`, `discrim`)
+            initObjVariant(value, `vf`, `discrim`)
             break
           const mappings = getActualFieldMappings(T, HoloJson)
           implNormalizer(T)
@@ -457,35 +460,31 @@ proc read*[T: object](format: JsonRead, reader: JsonReaderArg, v: var T) =
           # needs space skipped above?
           skipChar(format, reader, ',')
         else:
-          initObj(v)
+          initObj(value)
           break
     finally:
       reader.state = savedState
       reader.unlockBuffer()
-  parseObjectInner(format, reader, v)
+  parseObjectInner(format, reader, value)
   skipChar(format, reader, '}')
 
-proc read*[T: distinct](format: JsonRead, reader: JsonReaderArg, v: var T) {.inline.} =
+proc read*[T: distinct](format: JsonRead, reader: JsonReaderArg, value: var T) {.inline.} =
   mixin read
-  read(format, reader, distinctBase(T)(v))
+  read(format, reader, distinctBase(T)(value))
 
 proc read*[T](format: JsonRead, reader: JsonReaderArg, _: typedesc[T]): T =
   mixin read
   read(format, reader, result)
 
-proc readJson*[T](reader: JsonReaderArg, v: var T) {.inline.} =
+proc readJson*[T](reader: JsonReaderArg, value: var T) {.inline.} =
   mixin read
-  read(JsonRead(), reader, v)
+  read(JsonRead(), reader, value)
 
 proc readJson*[T](reader: JsonReaderArg, _: typedesc[T]): T {.inline.} =
   mixin read
   read(JsonRead(), reader, result)
 
 proc fromJson*[T](x: typedesc[T], s: string, format = JsonRead()): T {.inline.} =
-  ## Takes json and outputs the object it represents.
-  ## * Extra json fields are ignored.
-  ## * Missing json fields keep their default values.
-  ## * `proc startObjectRead(format: JsonRead, reader: JsonReaderArg, foo: var ...)` Can be used to populate default values.
   mixin read
   result = default(T)
   var reader = initJsonReader()
