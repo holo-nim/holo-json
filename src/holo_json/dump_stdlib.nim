@@ -66,14 +66,14 @@ template stringTableImpl(format, writer, tab, K, V) =
   mixin dump, pairs
   # not in original jsony
   when tab is ref:
-    if isNil(value):
+    if isNil(tab):
       writer.write "null"
       return
   var obj: ObjectDump
   obj.dumpTo format, writer:
-    for k, value in tab.pairs:
+    for k, v in tab.pairs:
       obj.withField format, writer, $k:
-        format.dump writer, value
+        format.dump writer, v
 
 proc dump*[K: string | enum, V](format: JsonDump, writer: JsonWriterArg, tab: Table[K, V]) =
   ## Dump an object.
@@ -91,19 +91,19 @@ template anyTableImpl(format, writer, tab, K, V) =
   mixin dump, pairs
   # not in original jsony
   when tab is ref:
-    if isNil(value):
+    if isNil(tab):
       writer.write "null"
       return
   var arr: ArrayDump
   arr.dumpTo format, writer:
-    for k, value in tab.pairs:
+    for k, v in tab.pairs:
       arr.withItem format, writer:
         var pair: ArrayDump
         pair.dumpTo format, writer:
           pair.withItem format, writer:
             format.dump writer, k
           pair.withItem format, writer:
-            format.dump writer, value
+            format.dump writer, v
 
 proc dump*[K: not (string | enum), V](format: JsonDump, writer: JsonWriterArg, tab: Table[K, V]) =
   ## Dump a normal table.

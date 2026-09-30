@@ -321,9 +321,9 @@ proc parseObjectInner[T](format: JsonRead, reader: JsonReaderArg, obj: var T) {.
       when jsonyHookCompatibility and compiles(renameHook(obj, key)):
         renameHook(obj, key)
         block all:
-          for k, value in fieldPairs(when obj is ref: obj[] else: obj):
+          for k, v in fieldPairs(when obj is ref: obj[] else: obj):
             if k == key or static(toSnakeCase(k)) == key:
-              read(format, reader, value)
+              read(format, reader, v)
               break all
           discard skipValue(format, reader)
       else:
@@ -350,9 +350,9 @@ proc read*[T: tuple](format: JsonRead, reader: JsonReaderArg, value: var T) =
       skipChar(format, reader, '}')
       return
   expectChar(format, reader, '[')
-  for name, value in value.fieldPairs:
+  for name, field in value.fieldPairs:
     skipSpace(format, reader)
-    read(format, reader, value)
+    read(format, reader, field)
     skipSpace(format, reader)
     if reader.nextMatch(','):
       discard
