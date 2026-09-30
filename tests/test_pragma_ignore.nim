@@ -1,4 +1,4 @@
-import holo_json
+import holo_json, cosm/mapping
 
 type
   Conn = object
