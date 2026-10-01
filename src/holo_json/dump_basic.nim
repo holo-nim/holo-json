@@ -359,8 +359,20 @@ template dumpStaticStr(writer: JsonWriterArg, s: static string) =
   const s2 = dumpStr(s)
   writer.write s2
 
+type HasEnumOutputHook* = concept
+  ## implement to determine which output kind an enum type uses
+  proc enumOutput(format: JsonDump, _: typedesc[Self]): EnumOutput
+
+template getEnumOutputKind*(format: JsonDump, T: typedesc): EnumOutput =
+  mixin enumOutput
+  when T is HasEnumOutputHook:
+    enumOutput(format, T)
+  else:
+    format.defaultEnumOutput
+
 proc dump*[T: enum](format: JsonDump, writer: JsonWriterArg, value: T) {.inline.} =
-  case format.defaultEnumOutput
+  let outputKind = getEnumOutputKind(format, T)
+  case outputKind
   of EnumName:
     template onEnumOutput(s: string) =
       writer.dumpStaticStr(s)
