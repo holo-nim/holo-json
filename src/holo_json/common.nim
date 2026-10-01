@@ -105,3 +105,9 @@ template jsonUseStringKey*(_: type string): bool =
 
 template jsonUseStringKey*[T: enum](_: type T): bool =
   true
+
+import std/typetraits
+
+template jsonUseStringKey*[T: distinct](_: type T): bool =
+  mixin jsonUseStringKey
+  jsonUseStringKey(distinctBase(T))
