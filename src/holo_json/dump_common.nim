@@ -5,11 +5,11 @@ type JsonWriterImplementation* = enum
   JsonGenericWriter = "generic"
 
 when defined(nimHasGenericDefine):
-  const holoJsonWriterImpl* {.define.}: JsonWriterImplementation = JsonFlushWriter
+  const holoJsonWriterImpl* {.define.}: JsonWriterImplementation = JsonIndentFlushWriter # JsonFlushWriter
   const impl = holoJsonWriterImpl
 else:
   import std/strutils
-  const holoJsonWriterImpl* {.strdefine.} = $JsonFlushWriter
+  const holoJsonWriterImpl* {.strdefine.} = $JsonIndentFlushWriter # JsonFlushWriter
   const impl = parseEnum[JsonWriterImplementation](holoJsonWriterImpl)
 
 when impl == JsonFlushWriter:
@@ -36,7 +36,11 @@ elif impl == JsonIndentFlushWriter:
 
   type
     JsonWriter* = IndentFlushWriter
+      ## writer implementation used in the default `dump` hook implementations
     JsonWriterArg* = var JsonWriter
+      ## writer implementation used in the default `dump` hook implementation signatures
+      ## 
+      ## implementing type has to match API in https://holo-nim.github.io/fleu/docs/writer_api
 
   proc initJsonWriter*(): JsonWriter {.inline.} =
     result = initIndentFlushWriter()
