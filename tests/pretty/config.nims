@@ -1,3 +1,3 @@
 switch("path", "../../src")
 
-switch("define", "holoJsonWriterImpl=indent-flush")
+#switch("define", "holoJsonWriterImpl=indent-flush")

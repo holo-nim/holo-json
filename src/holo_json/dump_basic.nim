@@ -464,7 +464,7 @@ proc dump*[N, T](format: JsonDump, writer: JsonWriterArg, value: array[N, tuple[
       obj.withField format, writer, k:
         format.dump(writer, e)
 
-proc dump*[T](format: JsonDump, writer: JsonWriterArg, value: ref T) {.inline.} =
+proc dump*[T](format: JsonDump, writer: JsonWriterArg, value: ref T) {.inline, gcsafe.} =
   mixin dump
   if value == nil:
     writer.write "null"

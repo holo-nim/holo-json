@@ -27,9 +27,9 @@ which allow custom data streams with minimal overhead for the case
 where the buffer is not dynamic (i.e. a direct string).
 
 They also allow for things like line/column tracking or indented output,
-but by default the implementations that allow these are not used, as the chief
-use of this library is serialization, which prefers performance over readability
-(unlike data streaming, these do impact performance since they are checked for every character).
+but as the chief use of this library is serialization,
+capabilities that noticeably impact performance are disabled by default
+(line tracking for example applies to every read character).
 The implementation can be configured using a compile-time define (see
 [reader](https://holo-nim.github.io/holo-json/docs/read_common.html) and
 [writer](https://holo-nim.github.io/holo-json/docs/dump_common.html) options).
