@@ -70,3 +70,81 @@ let serNode = toJson(deserNode, JsonDump(pretty: true))
 doAssert ser1 == serNode
 let deserNode2 = fromJsonAs(serNode, JsonNode)
 doAssert deserNode == deserNode2
+
+doAssert toJson([1, 2, 3], JsonDump(pretty: true)) == """[
+  1,
+  2,
+  3
+]"""
+doAssert toJson([1.0, 2.0, 3.0], JsonDump(pretty: true)) == """[
+  1.0,
+  2.0,
+  3.0
+]"""
+
+var ser1ClosingBrace = toJson(testObj, JsonDump(pretty: true, prettyClosingBrace: NoSpacing))
+doAssert ser1ClosingBrace == """{
+  "a": 123,
+  "b": 4.56,
+  "c": [
+    "a b c",
+    "def",
+    "g\nh\ni"],
+  "d": [
+    {
+      "a": -1,
+      "b": "nan",
+      "c": [
+        "",
+        "\r\n  ",
+        "\n\n\n"],
+      "d": [
+        {
+          "a": 0,
+          "b": 0.0,
+          "c": [
+            "",
+            "",
+            ""],
+          "d": []}]},
+    {
+      "a": 9223372036854775807,
+      "b": "inf",
+      "c": [
+        "!#$",
+        "'^+",
+        "%&/"],
+      "d": []}]}"""
+ser1ClosingBrace = toJson(testObj, JsonDump(pretty: true, prettyClosingBrace: InlineSpace))
+doAssert ser1ClosingBrace == """{
+  "a": 123,
+  "b": 4.56,
+  "c": [
+    "a b c",
+    "def",
+    "g\nh\ni" ],
+  "d": [
+    {
+      "a": -1,
+      "b": "nan",
+      "c": [
+        "",
+        "\r\n  ",
+        "\n\n\n" ],
+      "d": [
+        {
+          "a": 0,
+          "b": 0.0,
+          "c": [
+            "",
+            "",
+            "" ],
+          "d": [] } ] },
+    {
+      "a": 9223372036854775807,
+      "b": "inf",
+      "c": [
+        "!#$",
+        "'^+",
+        "%&/" ],
+      "d": [] } ] }"""

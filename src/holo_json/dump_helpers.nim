@@ -31,7 +31,12 @@ proc finishArrayDump*(arr: var ArrayDump, format: JsonDump, writer: JsonWriterAr
   if format.pretty and arr.needsComma:
     when supportsIndent(writer):
       writer.removeIndent()
-    writer.write '\n'
+    case format.prettyClosingBrace
+    of SeparateLine:
+      writer.write '\n'
+    of InlineSpace:
+      writer.write ' '
+    of NoSpacing: discard
   writer.write ']'
 
 proc startArrayItem*(arr: var ArrayDump, format: JsonDump, writer: JsonWriterArg) {.inline.} =
@@ -63,7 +68,12 @@ proc finishObjectDump*(arr: var ObjectDump, format: JsonDump, writer: JsonWriter
   if format.pretty and arr.needsComma:
     when supportsIndent(writer):
       writer.removeIndent()
-    writer.write '\n'
+    case format.prettyClosingBrace
+    of SeparateLine:
+      writer.write '\n'
+    of InlineSpace:
+      writer.write ' '
+    of NoSpacing: discard
   writer.write '}'
 
 proc startObjectField*[T](arr: var ObjectDump, format: JsonDump, writer: JsonWriterArg, name: T, raw = false) {.inline.} =

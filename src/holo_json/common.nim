@@ -38,10 +38,12 @@ type
     EscapeInvalidUtf8 ## encodes invalid utf8 in escape sequence
     ReplaceInvalidUtf8 ## replaces invalid utf8 with replacement character
     KeepInvalidUtf8 ## keeps invalid utf8 characters as-is
+  PrettyModeClosingBrace* = enum
+    SeparateLine ## closing brace is on separate line, default behavior
+    InlineSpace ## an inline space is added before the closing brace
+    NoSpacing ## closing brace is added directly after the last character
   JsonDump* = object
     ## json output format (options)
-    pretty*: bool
-      ## pretty output, requires indented writer
     keepUtf8*: bool = true
       ## keeps valid utf 8 codepoints in strings as-is instead of encoding an escape sequence
     invalidUtf8*: InvalidUtf8Output = EscapeInvalidUtf8
@@ -50,6 +52,10 @@ type
     rawJsNanInf*: bool
       ## produces raw NaN/Infinity/-Infinity as in js and json5, as opposed to strings as in nim json
     defaultEnumOutput*: EnumOutput
+    pretty*: bool
+      ## pretty output, requires indented writer
+    prettyClosingBrace*: PrettyModeClosingBrace
+      ## chooses pretty mode behavior for closing ] and } braces
 
 const jsonyHookCompatibility* {.booldefine.} = false
   ## allows compatibility with `renameHook` and `skipHook` which have been replaced with pragmas,
