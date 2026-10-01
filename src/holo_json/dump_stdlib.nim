@@ -62,70 +62,52 @@ proc dump*[T](format: JsonDump, writer: JsonWriterArg, value: set[T]) =
       arr.withItem format, writer:
         format.dump(writer, e)
 
-template stringTableImpl(format, writer, tab, K, V) =
-  mixin dump, pairs
-  # not in original jsony
-  when tab is ref:
-    if isNil(tab):
-      writer.write "null"
-      return
-  var obj: ObjectDump
-  obj.dumpTo format, writer:
-    for k, v in tab.pairs:
-      obj.withField format, writer, $k:
-        format.dump writer, v
-
-proc dump*[K: string | enum, V](format: JsonDump, writer: JsonWriterArg, tab: Table[K, V]) =
-  ## Dump an object.
-  stringTableImpl(format, writer, tab, K, V)
-
-proc dump*[K: string | enum, V](format: JsonDump, writer: JsonWriterArg, tab: OrderedTable[K, V]) =
-  ## Dump an object.
-  stringTableImpl(format, writer, tab, K, V)
-
-proc dump*[K: string | enum](format: JsonDump, writer: JsonWriterArg, tab: CountTable[K]) =
-  ## Dump an object.
-  stringTableImpl(format, writer, tab, K, int)
-
 template anyTableImpl(format, writer, tab, K, V) =
-  mixin dump, pairs
+  mixin dump, pairs, jsonUseStringKey, `$`
   # not in original jsony
   when tab is ref:
     if isNil(tab):
       writer.write "null"
       return
-  var arr: ArrayDump
-  arr.dumpTo format, writer:
-    for k, v in tab.pairs:
-      arr.withItem format, writer:
-        var pair: ArrayDump
-        pair.dumpTo format, writer:
-          pair.withItem format, writer:
-            format.dump writer, k
-          pair.withItem format, writer:
-            format.dump writer, v
+  when jsonUseStringKey(K):
+    var obj: ObjectDump
+    obj.dumpTo format, writer:
+      for k, v in tab.pairs:
+        obj.withField format, writer, $k:
+          format.dump writer, v
+  else:
+    var arr: ArrayDump
+    arr.dumpTo format, writer:
+      for k, v in tab.pairs:
+        arr.withItem format, writer:
+          var pair: ArrayDump
+          pair.dumpTo format, writer:
+            pair.withItem format, writer:
+              format.dump writer, k
+            pair.withItem format, writer:
+              format.dump writer, v
 
-proc dump*[K: not (string | enum), V](format: JsonDump, writer: JsonWriterArg, tab: Table[K, V]) =
+proc dump*[K, V](format: JsonDump, writer: JsonWriterArg, tab: Table[K, V]) =
   ## Dump a normal table.
   anyTableImpl(format, writer, tab, K, V)
 
-proc dump*[K: not (string | enum), V](format: JsonDump, writer: JsonWriterArg, tab: OrderedTable[K, V]) =
+proc dump*[K, V](format: JsonDump, writer: JsonWriterArg, tab: OrderedTable[K, V]) =
   ## Dump a normal table.
   anyTableImpl(format, writer, tab, K, V)
 
-proc dump*[K: not (string | enum)](format: JsonDump, writer: JsonWriterArg, tab: CountTable[K]) =
+proc dump*[K](format: JsonDump, writer: JsonWriterArg, tab: CountTable[K]) =
   ## Dump a normal table.
   anyTableImpl(format, writer, tab, K, int)
 
 when false: # should not need anymore with the `ref object` overload disabled
-  proc dump*[K: string | enum, V](format: JsonDump, writer: JsonWriterArg, tab: TableRef[K, V]) =
+  proc dump*[K, V](format: JsonDump, writer: JsonWriterArg, tab: TableRef[K, V]) =
     ## Dump an object.
-    tableImpl(format, writer, tab, K, V)
+    anyTableImpl(format, writer, tab, K, V)
 
-  proc dump*[K: string | enum, V](format: JsonDump, writer: JsonWriterArg, tab: OrderedTableRef[K, V]) =
+  proc dump*[K, V](format: JsonDump, writer: JsonWriterArg, tab: OrderedTableRef[K, V]) =
     ## Dump an object.
-    tableImpl(format, writer, tab, K, V)
+    anyTableImpl(format, writer, tab, K, V)
 
-  proc dump*[K: string | enum](format: JsonDump, writer: JsonWriterArg, tab: CountTableRef[K]) =
+  proc dump*[K](format: JsonDump, writer: JsonWriterArg, tab: CountTableRef[K]) =
     ## Dump an object.
-    tableImpl(format, writer, tab, K, int)
+    anyTableImpl(format, writer, tab, K, int)

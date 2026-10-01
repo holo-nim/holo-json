@@ -91,3 +91,23 @@ const jsonDefaultInputNames* =
 const jsonDefaultOutputName* =
   if jsonyFieldCompatibility: verbatim()
   else: snakeCase()
+
+template jsonUseStringKey*[T](_: typedesc[T]): bool =
+  ## overload to make this type use string keys in an object to represent tables
+  ##
+  ## by default, this is enabled for strings and enums, but not cstrings as they can be nil
+  false
+
+template jsonUseStringKey*(_: type string): bool =
+  true
+
+# no cstring, can be nil
+
+template jsonUseStringKey*[T: enum](_: type T): bool =
+  true
+
+import std/typetraits
+
+template jsonUseStringKey*[T: distinct](_: type T): bool =
+  mixin jsonUseStringKey
+  jsonUseStringKey(distinctBase(T))

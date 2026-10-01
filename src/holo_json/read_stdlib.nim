@@ -87,85 +87,55 @@ proc read*[T](format: JsonRead, reader: JsonReaderArg, value: var Option[T]) =
   read(format, reader, e)
   value = some(e)
 
-template stringTableImpl(format, reader, value, K, V) =
-  mixin read
-  when value is ref:
-    if reader.nextMatch("null"):
-      # this is added this time
-      return
-    new(value)
-  expectChar(format, reader, '{')
-  while reader.hasNext():
-    skipSpace(format, reader)
-    if reader.peekMatch('}'):
-      break
-    var key: K
-    read(format, reader, key)
-    skipChar(format, reader, ':')
-    var element: V
-    read(format, reader, element)
-    value[key] = element
-    if reader.nextMatch(','):
-      discard
-    else:
-      break
-  skipChar(format, reader, '}')
-
-proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, value: var Table[K, V]) =
-  ## Parse an object.
-  stringTableImpl(format, reader, value, K, V)
-
-proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, value: var OrderedTable[K, V]) =
-  ## Parse an object.
-  stringTableImpl(format, reader, value, K, V)
-
-proc read*[K: string | enum](format: JsonRead, reader: JsonReaderArg, value: var CountTable[K]) =
-  ## Parse an object.
-  stringTableImpl(format, reader, value, K, int)
-
 template anyTableImpl(format, reader, tab, K, V) =
-  mixin read
+  mixin read, jsonUseStringKey
   when tab is ref:
     if reader.nextMatch("null"):
       # this is added this time
       return
     new(tab)
-  for _ in readArray(format, reader):
-    var k: K
-    var v: V
-    for pairI in readArray(format, reader):
-      if pairI == 0:
-        read(format, reader, k)
-      elif pairI == 1:
-        read(format, reader, v)
-      else:
-        reader.error("expected table key/value pair, but extra element found")
-    tab[k] = v
+  when jsonUseStringKey(K):
+    for key in readObject[K](format, reader):
+      var element: V
+      read(format, reader, element)
+      tab[key] = element
+  else:
+    for _ in readArray(format, reader):
+      var k: K
+      var v: V
+      for pairI in readArray(format, reader):
+        if pairI == 0:
+          read(format, reader, k)
+        elif pairI == 1:
+          read(format, reader, v)
+        else:
+          reader.error("expected table key/value pair, but extra element found")
+      tab[k] = v
 
-proc read*[K: not (string | enum), V](format: JsonRead, reader: JsonReaderArg, tab: var Table[K, V]) =
+proc read*[K, V](format: JsonRead, reader: JsonReaderArg, tab: var Table[K, V]) =
   ## Parse a normal table.
   anyTableImpl(format, reader, tab, K, V)
 
-proc read*[K: not (string | enum), V](format: JsonRead, reader: JsonReaderArg, tab: var OrderedTable[K, V]) =
+proc read*[K, V](format: JsonRead, reader: JsonReaderArg, tab: var OrderedTable[K, V]) =
   ## Parse a normal table.
   anyTableImpl(format, reader, tab, K, V)
 
-proc read*[K: not (string | enum)](format: JsonRead, reader: JsonReaderArg, tab: var CountTable[K]) =
+proc read*[K](format: JsonRead, reader: JsonReaderArg, tab: var CountTable[K]) =
   ## Parse a normal table.
   anyTableImpl(format, reader, tab, K, int)
 
 when false: # should not need anymore with the `ref object` overload disabled
-  proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, value: var TableRef[K, V]) =
+  proc read*[K, V](format: JsonRead, reader: JsonReaderArg, value: var TableRef[K, V]) =
     ## Parse an object.
-    tableImpl(format, reader, value, K, V)
+    anyTableImpl(format, reader, value, K, V)
 
-  proc read*[K: string | enum, V](format: JsonRead, reader: JsonReaderArg, value: var OrderedTableRef[K, V]) =
+  proc read*[K, V](format: JsonRead, reader: JsonReaderArg, value: var OrderedTableRef[K, V]) =
     ## Parse an object.
-    tableImpl(format, reader, value, K, V)
+    anyTableImpl(format, reader, value, K, V)
 
-  proc read*[K: string | enum](format: JsonRead, reader: JsonReaderArg, value: var CountTableRef[K]) =
+  proc read*[K](format: JsonRead, reader: JsonReaderArg, value: var CountTableRef[K]) =
     ## Parse an object.
-    tableImpl(format, reader, value, K, int)
+    anyTableImpl(format, reader, value, K, int)
 
 proc read*[T](format: JsonRead, reader: JsonReaderArg, value: var HashSet[T]) =
   ## Parses `HashSet`.
