@@ -70,3 +70,14 @@ let serNode = toJson(deserNode, JsonDump(pretty: true))
 doAssert ser1 == serNode
 let deserNode2 = fromJsonAs(serNode, JsonNode)
 doAssert deserNode == deserNode2
+
+doAssert toJson([1, 2, 3], JsonDump(pretty: true)) == """[
+  1,
+  2,
+  3
+]"""
+doAssert toJson([1.0, 2.0, 3.0], JsonDump(pretty: true)) == """[
+  1.0,
+  2.0,
+  3.0
+]"""

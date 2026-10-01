@@ -53,10 +53,12 @@ proc dumpNumberFast(writer: JsonWriterArg, value: uint|uint8|uint16|uint32|uint6
     digits[p] = twoDigitLookup[idx*2]
     inc p
     v = v div 100
-  var at = writer.currentBuffer.len
   if digits[p-1] == '0':
     dec p
-  writer.currentBuffer.setLen(writer.currentBuffer.len + p)
+  when supportsIndent(writer):
+    writer.maybeInsertIndent()
+  var at = writer.currentBuffer.len
+  writer.currentBuffer.setLen(at + p)
   dec p
   while p >= 0:
     writer.currentBuffer[at] = digits[p]
@@ -74,7 +76,9 @@ template uintImpl() =
       else:
         writer.dumpNumberFast(value)
   else:
-    writer.buffer.addInt value
+    when supportsIndent(writer):
+      writer.maybeInsertIndent()
+    writer.currentBuffer.addInt value
     writer.consumeBuffer()
 
 proc dump*(format: JsonDump, writer: JsonWriterArg, value: uint) {.inline.} =
@@ -100,7 +104,9 @@ template intImpl() =
     else:
       dump(format, writer, value.uint64)
   else:
-    writer.buffer.addInt value
+    when supportsIndent(writer):
+      writer.maybeInsertIndent()
+    writer.currentBuffer.addInt value
     writer.consumeBuffer()
 
 proc dump*(format: JsonDump, writer: JsonWriterArg, value: int) {.inline.} =
@@ -141,6 +147,8 @@ template floatImpl() =
       # copy nim json
       writer.write "\"-inf\""
   else:
+    when supportsIndent(writer):
+      writer.maybeInsertIndent()
     writer.currentBuffer.addFloat(value)
     writer.consumeBuffer()
 
