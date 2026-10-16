@@ -419,6 +419,13 @@ proc dump*[T](format: JsonDump, writer: JsonWriterArg, value: seq[T]) =
         #if i != 0: writer.write ','
         format.dump(writer, e)
 
+type HasFieldOmitHook* = concept
+  ## implement to omit fields depending on runtime value
+  ## 
+  ## the field name is the mapped version at the moment for simplicity 
+  proc omitField(format: JsonDump, obj: Self, field: static string): bool
+    ## also works if `field` has type `string` apparently but might be an unstable nim quirk
+
 proc dumpFields*[T: object](format: JsonDump, writer: JsonWriterArg, obj: var ObjectDump, value: T) =
   mixin dump
   when jsonyPairsObject and compiles(for k, e in value.pairs: discard):
@@ -444,11 +451,19 @@ proc dumpFields*[T: object](format: JsonDump, writer: JsonWriterArg, obj: var Ob
           if format.pretty: writer.write ' '
           format.dump(writer, e)
     else:
-      template onFieldOutput(f, fName) =
-        maybeAddComma(format, writer, obj.needsComma)
-        writer.dumpKey(fName)
-        if format.pretty: writer.write ' '
-        format.dump(writer, f)
+      when T is HasFieldOmitHook:
+        template onFieldOutput(f, fName) =
+          if not omitField(format, value, fName):
+            maybeAddComma(format, writer, obj.needsComma)
+            writer.dumpKey(fName)
+            if format.pretty: writer.write ' '
+            format.dump(writer, f)
+      else:
+        template onFieldOutput(f, fName) =
+          maybeAddComma(format, writer, obj.needsComma)
+          writer.dumpKey(fName)
+          if format.pretty: writer.write ' '
+          format.dump(writer, f)
       const mappings = getActualFieldMappings(T, HoloJson)
       # XXX no normalizer support
       mapFieldOutput(value, mappings, nil, jsonDefaultOutputName, onFieldOutput)
